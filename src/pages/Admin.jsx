@@ -115,9 +115,10 @@ export const Admin = () => {
       }
 
       setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-      handleNewProduct();
-      setActiveTab('list');
+      setTimeout(() => {
+        setSuccess(false);
+        window.location.reload(); // Magia: recarga automática
+      }, 1500);
 
     } catch (error) {
       console.error(error);

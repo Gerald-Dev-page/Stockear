@@ -154,7 +154,7 @@ export const Home = () => {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-8 md:gap-x-6 md:gap-y-12">
             {featuredProducts.length > 0 ? (
               featuredProducts.map(product => <ProductCard key={product.id} product={product} />)
             ) : (
@@ -229,7 +229,7 @@ export const Home = () => {
             <div className="h-1 w-20 bg-stockea-cta rounded-full"></div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-12">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-8 md:gap-x-6 md:gap-y-12">
             {latestProducts.map(product => <ProductCard key={product.id} product={product} />)}
           </div>
 
