@@ -1,0 +1,88 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap");
+@import "tailwindcss";
+
+@theme {
+  /* Navy — escala completa, no un solo tono plano */
+  --color-stockea-navy-950: #081527;
+  --color-stockea-navy-800: #0B1F3A;
+  --color-stockea-navy-600: #13315C;
+  --color-stockea-navy-100: #E8ECF3;
+
+  /* Dorado — acento, nunca fondo grande */
+  --color-stockea-cta: #C9A227;
+  --color-stockea-cta-hover: #E0BE5C;
+  --color-stockea-cta-soft: #F5E9C8;
+
+  /* Neutros */
+  --color-stockea-bg: #F7F8FA;
+  --color-stockea-surface: #FFFFFF;
+  --color-stockea-border: #E2E5EA;
+  --color-stockea-text: #1A2333;
+  --color-stockea-text-muted: #5C6577;
+  --color-stockea-text-light: #FFFFFF;
+
+  /* Estados */
+  --color-stockea-success: #2E7D5B;
+  --color-stockea-alert: #B3402A;
+
+  /* Tipografías */
+  --font-sans: "Inter", sans-serif;
+  --font-display: "Poppins", sans-serif;
+
+  /* Radios y sombras consistentes */
+  --radius-card: 10px;
+  --radius-pill: 999px;
+  --shadow-card: 0 4px 20px rgba(8, 21, 39, 0.08);
+  --shadow-card-hover: 0 8px 28px rgba(8, 21, 39, 0.14);
+  --shadow-gold-glow: 0 0 40px rgba(201, 162, 39, 0.35);
+}
+
+@layer base {
+  body {
+    @apply font-sans antialiased bg-stockea-bg text-stockea-text;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display font-semibold tracking-tight;
+    color: var(--color-stockea-navy-950);
+  }
+
+  ::selection {
+    background: var(--color-stockea-cta-soft);
+    color: var(--color-stockea-navy-950);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-stockea-cta);
+    outline-offset: 2px;
+  }
+
+  a {
+    color: inherit;
+  }
+}
+
+@layer utilities {
+  @keyframes stockea-marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  .animate-marquee {
+    animation: stockea-marquee 28s linear infinite;
+  }
+
+  @keyframes stockea-fade-up {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-up {
+    animation: stockea-fade-up 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-marquee,
+    .animate-fade-up {
+      animation: none !important;
+    }
+  }
+}
