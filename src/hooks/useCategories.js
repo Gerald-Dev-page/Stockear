@@ -1,30 +1,38 @@
 import { useState, useEffect } from 'react';
-import { useProducts } from './useProducts';
+import { supabase } from '../services/supabase';
 
 export const useCategories = () => {
-  const { products, loading: productsLoading } = useProducts();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Solo procesamos cuando los productos ya terminaron de cargar
-    if (!productsLoading) {
-      // 1. Extraemos los nombres de las categorías sin repetir
-      const uniqueNames = [...new Set(products.map(p => p.category).filter(Boolean))];
-      
-      // 2. Armamos el objeto con nombre, slug y una imagen de prueba automática
-      const formattedCategories = uniqueNames.map((name, index) => ({
-        id: index,
-        name: name,
-        slug: name.toLowerCase().replace(/\s+/g, '-'),
-        // Genera una imagen aleatoria pero fija basada en el nombre de la categoría
-        image: `https://picsum.photos/seed/${name.replace(/\s+/g, '')}/400/400`
-      }));
+    const fetchCategories = async () => {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('categorias')
+          .select('id, nombre')
+          .order('nombre', { ascending: true });
 
-      setCategories(formattedCategories);
-      setLoading(false);
-    }
-  }, [products, productsLoading]);
+        if (error) throw error;
+
+        const formatted = (data || []).map((c) => ({
+          id: c.id,
+          name: c.nombre,
+          slug: c.nombre.toLowerCase().replace(/\s+/g, '-'),
+          image: 'https://images.unsplash.com/photo-1591557304192-36c57fbc82ce?q=80&w=600&auto=format&fit=crop'
+        }));
+
+        setCategories(formatted);
+      } catch (err) {
+        console.error('Error al cargar categorías:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   return { categories, loading };
 };

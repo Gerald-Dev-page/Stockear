@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingBag, Search, Menu, X, Store } from 'lucide-react';
+import { ShoppingBag, Search, Menu, X, Store, User } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import logo from '../../assets/logo.png';
 
@@ -42,7 +42,7 @@ export const Navbar = () => {
         </div>
 
         {/* ── ACCIONES DERECHA ── */}
-        <div className="flex items-center gap-5 md:gap-8 flex-shrink-0">
+        <div className="flex items-center gap-4 md:gap-6 flex-shrink-0">
 
           {/* Toggle Mayorista/Minorista (Desktop) */}
           <div className="hidden md:flex items-center bg-stockea-navy-800 border border-white/5 rounded-pill p-1">
@@ -68,6 +68,16 @@ export const Navbar = () => {
             </button>
           </div>
 
+          {/* Acceso Rápido a Panel de Control / Usuario */}
+          <Link
+            to="/admin"
+            className="p-2 text-white/80 hover:text-stockea-cta hover:bg-white/5 rounded-full transition-colors"
+            title="Panel de Administración"
+            aria-label="Panel de Administración"
+          >
+            <User size={21} strokeWidth={1.6} />
+          </Link>
+
           {/* Icono del Carrito */}
           <button
             onClick={() => setIsCartOpen(true)}
@@ -87,10 +97,10 @@ export const Navbar = () => {
       {/* ── MENÚ MOBILE DESPLEGABLE ── */}
       <div 
         className={`lg:hidden overflow-hidden transition-all duration-300 ease-in-out border-b border-white/10 ${
-          mobileMenuOpen ? 'max-h-72 opacity-100' : 'max-h-0 opacity-0 border-transparent'
+          mobileMenuOpen ? 'max-h-80 opacity-100' : 'max-h-0 opacity-0 border-transparent'
         }`}
       >
-        <div className="px-4 py-6 bg-stockea-navy-950 flex flex-col gap-5">
+        <div className="px-4 py-6 bg-stockea-navy-950 flex flex-col gap-4">
           {/* Buscador Mobile */}
           <div className="relative">
             <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
@@ -120,6 +130,15 @@ export const Navbar = () => {
               <Store size={12} strokeWidth={2} /> Mayorista
             </button>
           </div>
+
+          {/* Enlace al Admin en Mobile */}
+          <Link
+            to="/admin"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center justify-center gap-2 py-2.5 text-xs font-semibold uppercase tracking-widest text-white/70 hover:text-stockea-cta border border-white/10 rounded-pill transition-colors"
+          >
+            <User size={15} strokeWidth={1.6} /> Panel de Administración
+          </Link>
         </div>
       </div>
     </header>
