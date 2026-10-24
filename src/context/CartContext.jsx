@@ -19,15 +19,16 @@ export const CartProvider = ({ children }) => {
     localStorage.setItem('stockea_cart', JSON.stringify(cart));
   }, [cart]);
 
-  const addToCart = (product) => {
+  // Soporta sumar 1 o una cantidad específica seleccionada desde el modal
+  const addToCart = (product, quantity = 1) => {
     setCart((prev) => {
       const exists = prev.find((item) => item.id === product.id);
       if (exists) {
         return prev.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item
         );
       }
-      return [...prev, { ...product, quantity: 1 }];
+      return [...prev, { ...product, quantity }];
     });
     setIsCartOpen(true);
   };
@@ -46,22 +47,15 @@ export const CartProvider = ({ children }) => {
     );
   };
 
-  // Helper para determinar el precio activo por unidad según volumen
   const getItemPrice = (item) => {
     const qty = item.quantity;
     const tier3Min = item.minTier3Qty || 12;
     const tier2Min = item.minTier2Qty || 6;
     const tier1Min = item.minWholesaleQty || 3;
 
-    if (qty >= tier3Min && item.wholesalePriceTier3) {
-      return item.wholesalePriceTier3;
-    }
-    if (qty >= tier2Min && item.wholesalePriceTier2) {
-      return item.wholesalePriceTier2;
-    }
-    if ((qty >= tier1Min || isWholesale) && item.wholesalePrice) {
-      return item.wholesalePrice;
-    }
+    if (qty >= tier3Min && item.wholesalePriceTier3) return item.wholesalePriceTier3;
+    if (qty >= tier2Min && item.wholesalePriceTier2) return item.wholesalePriceTier2;
+    if ((qty >= tier1Min || isWholesale) && item.wholesalePrice) return item.wholesalePrice;
     return item.retailPrice;
   };
 

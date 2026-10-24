@@ -1,88 +1,61 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Raleway:wght@700;800;900&display=swap");
 @import "tailwindcss";
 
 @theme {
-  /* Navy — escala completa, no un solo tono plano */
-  --color-stockea-navy-950: #081527;
-  --color-stockea-navy-800: #0B1F3A;
-  --color-stockea-navy-600: #13315C;
-  --color-stockea-navy-100: #E8ECF3;
+  /* ── 1. PALETA OFICIAL STOCKEA ── */
+  /* Verde Stockea (45% Dominante) */
+  --color-stockea-green: #0A4738;
+  --color-stockea-green-dark: #073328;
+  --color-stockea-green-soft: #E8F0ED;
 
-  /* Dorado — acento, nunca fondo grande */
-  --color-stockea-cta: #C9A227;
-  --color-stockea-cta-hover: #E0BE5C;
-  --color-stockea-cta-soft: #F5E9C8;
+  /* Naranja Stockea (5% Acento de acción / CTA) */
+  --color-stockea-orange: #F2801E;
+  --color-stockea-orange-hover: #D96F15;
+  --color-stockea-orange-soft: #FDEFE3;
 
-  /* Neutros */
-  --color-stockea-bg: #F7F8FA;
+  /* Grafito (15% Textos y fondos de contraste) */
+  --color-stockea-graphite: #202020;
+  --color-stockea-graphite-muted: #555555;
+
+  /* Neutros & Blanco (35%) */
+  --color-stockea-gray-light: #E4E4E4;
+  --color-stockea-bg: #F7F8F9;
   --color-stockea-surface: #FFFFFF;
-  --color-stockea-border: #E2E5EA;
-  --color-stockea-text: #1A2333;
-  --color-stockea-text-muted: #5C6577;
-  --color-stockea-text-light: #FFFFFF;
+  --color-stockea-border: #E0E4E2;
 
-  /* Estados */
-  --color-stockea-success: #2E7D5B;
-  --color-stockea-alert: #B3402A;
+  /* Estados Funcionales */
+  --color-stockea-alert: #C92A2A;
+  --color-stockea-success: #0A4738;
 
-  /* Tipografías */
-  --font-sans: "Inter", sans-serif;
-  --font-display: "Poppins", sans-serif;
+  /* ── 2. TIPOGRAFÍAS DEL MANUAL ── */
+  --font-display: "Raleway", sans-serif;
+  --font-sans: "DM Sans", sans-serif;
 
-  /* Radios y sombras consistentes */
+  /* Formas y Sombras */
   --radius-card: 10px;
   --radius-pill: 999px;
-  --shadow-card: 0 4px 20px rgba(8, 21, 39, 0.08);
-  --shadow-card-hover: 0 8px 28px rgba(8, 21, 39, 0.14);
-  --shadow-gold-glow: 0 0 40px rgba(201, 162, 39, 0.35);
+  --shadow-card: 0 4px 20px rgba(10, 71, 56, 0.06);
+  --shadow-card-hover: 0 10px 28px rgba(10, 71, 56, 0.12);
 }
 
 @layer base {
   body {
-    @apply font-sans antialiased bg-stockea-bg text-stockea-text;
+    @apply font-sans antialiased bg-stockea-bg text-stockea-graphite;
   }
 
+  /* H1 / H2 con Raleway Heavy / Bold */
   h1, h2, h3, h4, h5, h6 {
-    @apply font-display font-semibold tracking-tight;
-    color: var(--color-stockea-navy-950);
+    @apply font-display font-extrabold tracking-tight text-stockea-green;
   }
 
+  /* Selección de texto acorde al manual */
   ::selection {
-    background: var(--color-stockea-cta-soft);
-    color: var(--color-stockea-navy-950);
+    background: var(--color-stockea-orange-soft);
+    color: var(--color-stockea-orange);
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-stockea-cta);
+    outline: 2px solid var(--color-stockea-orange);
     outline-offset: 2px;
-  }
-
-  a {
-    color: inherit;
-  }
-}
-
-@layer utilities {
-  @keyframes stockea-marquee {
-    from { transform: translateX(0); }
-    to { transform: translateX(-50%); }
-  }
-  .animate-marquee {
-    animation: stockea-marquee 28s linear infinite;
-  }
-
-  @keyframes stockea-fade-up {
-    from { opacity: 0; transform: translateY(18px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .animate-fade-up {
-    animation: stockea-fade-up 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .animate-marquee,
-    .animate-fade-up {
-      animation: none !important;
-    }
   }
 }

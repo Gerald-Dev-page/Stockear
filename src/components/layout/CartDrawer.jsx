@@ -1,175 +1,158 @@
-import { X, Trash2, Plus, Minus, ShoppingBag, MessageCircle, Package } from 'lucide-react';
+import { X, Plus, Minus, Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 
 export const CartDrawer = () => {
-  const {
-    cart,
-    removeFromCart,
-    updateQuantity,
-    total,
-    isCartOpen,
-    setIsCartOpen,
-    isWholesale
-  } = useCart();
+  const { cart, removeFromCart, updateQuantity, getItemPrice, total, isCartOpen, setIsCartOpen } = useCart();
 
-  const phoneNumber = "5491100000000";
+  const handleCheckoutWhatsApp = () => {
+    const phoneNumber = "5491100000000"; // Número comercial STOCKea
+    
+    let mensaje = "¡Hola STOCKea! Quiero realizar el siguiente pedido:\n\n";
 
-  const handleCheckout = () => {
-    let message = "Hola STOCKea! Quiero realizar el siguiente pedido:\n\n";
-
-    cart.forEach(item => {
-      const appliedPrice = (isWholesale || item.quantity >= item.minWholesaleQty)
-        ? item.wholesalePrice
-        : item.retailPrice;
-
-      message += `▫️ ${item.quantity}x ${item.title} — $${(appliedPrice * item.quantity).toLocaleString('es-AR')}\n`;
+    cart.forEach((item) => {
+      const unitPrice = getItemPrice ? getItemPrice(item) : (item.wholesalePrice || item.retailPrice);
+      const subtotal = unitPrice * item.quantity;
+      mensaje += `▪ ${item.title} (x${item.quantity}) - $${unitPrice.toLocaleString('es-AR')} c/u = $${subtotal.toLocaleString('es-AR')}\n`;
     });
 
-    message += `\n*Total estimado: $${total.toLocaleString('es-AR')}*\n\n¡Gracias!`;
+    mensaje += `\n*TOTAL ESTIMADO:* $${total.toLocaleString('es-AR')}\n\n`;
+    mensaje += "¿Cómo coordinamos el pago y el envío a depósito?";
 
-    window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
+    window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(mensaje)}`, '_blank');
   };
 
+  if (!isCartOpen) return null;
+
   return (
-    <>
-      {/* ── OVERLAY OSCURO ────────────────────────────────── */}
-      <div
-        className={`fixed inset-0 bg-stockea-navy-950/40 backdrop-blur-sm z-50 transition-opacity duration-300 ${
-          isCartOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
+    <div className="fixed inset-0 z-50 flex justify-end font-sans">
+      {/* Fondo oscuro con desenfoque */}
+      <div 
+        className="fixed inset-0 bg-stockea-graphite/60 backdrop-blur-xs transition-opacity"
         onClick={() => setIsCartOpen(false)}
       />
 
-      {/* ── PANEL LATERAL ─────────────────────────────────── */}
-      <div
-        className={`fixed top-0 right-0 h-full w-full sm:w-[420px] bg-stockea-surface shadow-2xl z-50 flex flex-col transition-transform duration-500 ease-out ${
-          isCartOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-stockea-border bg-stockea-surface flex-shrink-0">
-          <div className="flex items-center gap-3 text-stockea-navy-950">
-            <ShoppingBag size={20} strokeWidth={1.5} />
-            <h2 className="font-display font-semibold text-lg tracking-tight">Tu Selección</h2>
+      {/* Contenedor del Drawer */}
+      <div className="relative w-full max-w-md bg-stockea-surface h-full shadow-2xl flex flex-col z-10 border-l border-stockea-border">
+        
+        {/* Cabecera */}
+        <div className="p-5 border-b border-stockea-border flex items-center justify-between bg-stockea-green text-white">
+          <div className="flex items-center gap-2.5">
+            <ShoppingBag size={20} className="text-stockea-orange" />
+            <h2 className="font-display font-bold text-lg text-white">Tu Pedido</h2>
           </div>
-          <button
+          <button 
             onClick={() => setIsCartOpen(false)}
-            className="p-2 text-stockea-text-muted hover:text-stockea-navy-950 hover:bg-stockea-navy-100 transition-colors rounded-full"
+            className="p-1.5 rounded-full hover:bg-white/10 text-white/80 hover:text-white transition-colors"
+            aria-label="Cerrar pedido"
           >
-            <X size={18} strokeWidth={2} />
+            <X size={20} />
           </button>
         </div>
 
-        {/* Lista de Productos */}
-        <div className="flex-1 overflow-y-auto px-6 py-2">
+        {/* Lista de Artículos */}
+        <div className="flex-1 overflow-y-auto p-5 divide-y divide-stockea-border">
           {cart.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center space-y-5">
-              <div className="w-20 h-20 bg-stockea-navy-100 rounded-full flex items-center justify-center text-stockea-navy-600 mb-2">
-                <ShoppingBag size={32} strokeWidth={1} />
+            <div className="h-full flex flex-col items-center justify-center text-center py-12">
+              <div className="w-16 h-16 rounded-full bg-stockea-green-soft flex items-center justify-center text-stockea-green mb-4">
+                <ShoppingBag size={28} />
               </div>
-              <div>
-                <p className="font-display text-lg font-semibold text-stockea-navy-950 mb-1">Tu carrito está vacío</p>
-                <p className="text-sm text-stockea-text-muted">Explorá el catálogo para sumar productos.</p>
-              </div>
-              <button
-                onClick={() => setIsCartOpen(false)}
-                className="mt-4 border-2 border-stockea-border px-8 py-3 text-[11px] uppercase tracking-widest font-semibold text-stockea-navy-950 hover:border-stockea-navy-950 transition-colors rounded-card"
-              >
-                Volver al catálogo
-              </button>
+              <p className="font-display font-bold text-base text-stockea-green mb-1">El carrito está vacío</p>
+              <p className="text-xs text-stockea-graphite-muted max-w-xs">
+                Explorá el catálogo para sumar artículos y desbloquear precios por volumen.
+              </p>
             </div>
           ) : (
-            <div className="flex flex-col">
-              {cart.map(item => {
-                const appliedPrice = (isWholesale || item.quantity >= item.minWholesaleQty) ? item.wholesalePrice : item.retailPrice;
+            cart.map((item) => {
+              const unitPrice = getItemPrice ? getItemPrice(item) : (item.wholesalePrice || item.retailPrice);
+              const isWholesaleApplied = unitPrice < item.retailPrice;
 
-                return (
-                  <div key={item.id} className="flex gap-4 py-6 border-b border-stockea-border border-dashed last:border-none">
-                    {/* Imagen del producto */}
-                    <div className="w-20 md:w-24 aspect-[4/5] flex-shrink-0 bg-stockea-navy-100 rounded-sm overflow-hidden">
-                      <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
+              return (
+                <div key={item.id} className="py-4 flex gap-4 items-center">
+                  <img 
+                    src={item.image} 
+                    alt={item.title} 
+                    className="w-16 h-20 object-cover rounded-md border border-stockea-border flex-shrink-0 bg-stockea-gray-light/30"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-display font-bold text-xs text-stockea-green truncate mb-1">
+                      {item.title}
+                    </h4>
+
+                    {/* Precios aplicados según escala */}
+                    <div className="flex items-baseline gap-2 mb-2">
+                      <span className="font-bold text-sm text-stockea-graphite">
+                        ${unitPrice.toLocaleString('es-AR')}
+                      </span>
+                      {isWholesaleApplied && (
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-stockea-orange bg-stockea-orange-soft px-1.5 py-0.5 rounded">
+                          Mayorista
+                        </span>
+                      )}
                     </div>
 
-                    {/* Detalles del producto */}
-                    <div className="flex-1 flex flex-col justify-between py-1">
-                      <div>
-                        <div className="flex justify-between items-start gap-2">
-                          <h3 className="text-sm font-semibold text-stockea-navy-950 line-clamp-2 leading-snug">
-                            {item.title}
-                          </h3>
-                          <button 
-                            onClick={() => removeFromCart(item.id)} 
-                            className="text-stockea-text-muted hover:text-stockea-alert transition-colors p-1"
-                          >
-                            <Trash2 size={15} strokeWidth={1.5} />
-                          </button>
-                        </div>
-                        <p className="font-bold text-stockea-navy-950 mt-1">
-                          ${appliedPrice.toLocaleString('es-AR')}
-                        </p>
+                    {/* Controles de Cantidad */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center border border-stockea-border rounded-lg bg-stockea-bg">
+                        <button
+                          onClick={() => updateQuantity(item.id, -1)}
+                          className="p-1 hover:text-stockea-orange transition-colors"
+                          aria-label="Restar unidad"
+                        >
+                          <Minus size={13} />
+                        </button>
+                        <span className="px-2 text-xs font-bold font-mono text-stockea-graphite">
+                          {item.quantity}
+                        </span>
+                        <button
+                          onClick={() => updateQuantity(item.id, 1)}
+                          className="p-1 hover:text-stockea-orange transition-colors"
+                          aria-label="Sumar unidad"
+                        >
+                          <Plus size={13} />
+                        </button>
                       </div>
 
-                      {/* Controles de Cantidad y Badges */}
-                      <div className="flex items-center justify-between mt-4">
-                        <div className="flex items-center border border-stockea-border rounded-pill overflow-hidden bg-stockea-surface">
-                          <button 
-                            onClick={() => updateQuantity(item.id, -1)} 
-                            className="px-3 py-1.5 text-stockea-text-muted hover:bg-stockea-navy-100 hover:text-stockea-navy-950 transition-colors"
-                          >
-                            <Minus size={12} strokeWidth={2} />
-                          </button>
-                          <span className="w-6 text-center text-xs font-semibold text-stockea-navy-950">
-                            {item.quantity}
-                          </span>
-                          <button 
-                            onClick={() => updateQuantity(item.id, 1)} 
-                            className="px-3 py-1.5 text-stockea-text-muted hover:bg-stockea-navy-100 hover:text-stockea-navy-950 transition-colors"
-                          >
-                            <Plus size={12} strokeWidth={2} />
-                          </button>
-                        </div>
-
-                        {/* Etiqueta Mayorista Activa */}
-                        {item.quantity >= item.minWholesaleQty && !isWholesale && (
-                          <div className="flex items-center gap-1 bg-stockea-cta-soft/50 border border-stockea-cta-soft text-stockea-navy-800 px-2 py-1 rounded-pill">
-                            <Package size={10} className="text-stockea-cta" />
-                            <span className="text-[9px] uppercase tracking-widest font-bold">Mayorista</span>
-                          </div>
-                        )}
-                      </div>
+                      <button
+                        onClick={() => removeFromCart(item.id)}
+                        className="text-stockea-graphite-muted hover:text-stockea-alert p-1 transition-colors ml-auto"
+                        aria-label="Quitar artículo"
+                      >
+                        <Trash2 size={15} />
+                      </button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })
           )}
         </div>
 
-        {/* Footer / Checkout */}
+        {/* Resumen y Finalización de Compra */}
         {cart.length > 0 && (
-          <div className="p-6 border-t border-stockea-border bg-stockea-surface">
-            <div className="flex justify-between items-end mb-6">
-              <span className="text-xs font-semibold text-stockea-text-muted uppercase tracking-widest">
+          <div className="p-5 border-t border-stockea-border bg-stockea-surface flex flex-col gap-3">
+            <div className="flex justify-between items-baseline">
+              <span className="text-xs uppercase tracking-widest text-stockea-graphite-muted font-bold">
                 Total estimado
               </span>
-              <span className="font-display text-3xl font-bold text-stockea-navy-950 leading-none">
+              <span className="font-display font-extrabold text-2xl text-stockea-green">
                 ${total.toLocaleString('es-AR')}
               </span>
             </div>
-            
-            <button
-              onClick={handleCheckout}
-              className="w-full flex items-center justify-center gap-2 bg-stockea-navy-950 text-white font-bold text-[11px] uppercase tracking-widest py-4 hover:bg-[#25D366] transition-colors duration-300 rounded-card shadow-sm"
-            >
-              <MessageCircle size={16} strokeWidth={2} />
-              Finalizar Pedido
-            </button>
-            <p className="text-center text-[10px] text-stockea-text-muted uppercase tracking-widest mt-4">
-              Serás redirigido a WhatsApp
+
+            <p className="text-[11px] text-stockea-graphite-muted leading-tight">
+              Los precios finales y fletes se confirman directamente con el operador de depósito.
             </p>
+
+            <button
+              onClick={handleCheckoutWhatsApp}
+              className="w-full py-3.5 bg-stockea-orange hover:bg-stockea-orange-hover text-white rounded-lg font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all duration-300 active:scale-[0.98]"
+            >
+              Completar Pedido por WhatsApp <ArrowRight size={15} />
+            </button>
           </div>
         )}
+
       </div>
-    </>
+    </div>
   );
 };

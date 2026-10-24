@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, Search, Menu, X, Store, User } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import logo from '../../assets/logo.png';
@@ -7,86 +7,95 @@ import logo from '../../assets/logo.png';
 export const Navbar = () => {
   const { totalItems, setIsCartOpen, isWholesale, setIsWholesale } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const navigate = useNavigate();
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (query.trim()) {
+      navigate(`/catalogo?q=${encodeURIComponent(query.trim())}`);
+      setMobileMenuOpen(false);
+    }
+  };
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-stockea-navy-950/95 backdrop-blur-md text-stockea-text-light border-b border-white/10 transition-all duration-300">
+    <header className="sticky top-0 z-50 w-full bg-stockea-green text-white border-b border-white/10 shadow-md">
       <div className="max-w-7xl mx-auto px-4 md:px-8 h-20 flex items-center justify-between gap-6">
 
-        {/* ── LOGO Y HAMBURGUESA (MOBILE) ── */}
+        {/* LOGO */}
         <div className="flex items-center gap-4 flex-shrink-0">
           <button
-            className="md:hidden p-1 text-white/80 hover:text-white transition-colors"
+            className="md:hidden p-1 text-white/90 hover:text-white"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Alternar menú"
+            aria-label="Menú"
           >
-            {mobileMenuOpen ? <X size={24} strokeWidth={1.5} /> : <Menu size={24} strokeWidth={1.5} />}
+            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
           
-          <Link to="/" className="flex items-center group">
+          <Link to="/" className="flex items-center bg-white/95 px-3 py-1.5 rounded-md hover:bg-white transition-colors">
             <img 
               src={logo} 
-              alt="STOCKea Logo" 
-              className="h-7 md:h-9 object-contain opacity-90 group-hover:opacity-100 transition-opacity" 
+              alt="STOCKea" 
+              className="h-6 md:h-7 object-contain" 
             />
           </Link>
         </div>
 
-        {/* ── BUSCADOR (DESKTOP) ── */}
-        <div className="hidden lg:flex flex-1 max-w-lg relative group">
-          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-stockea-cta transition-colors" />
+        {/* BUSCADOR FUNCIONAL (DESKTOP) */}
+        <form onSubmit={handleSearchSubmit} className="hidden lg:flex flex-1 max-w-lg relative group">
+          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-stockea-orange transition-colors" />
           <input
             type="text"
-            placeholder="Buscar productos, categorías..."
-            className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-pill pl-11 pr-5 py-2.5 outline-none focus:border-stockea-cta focus:bg-white/10 transition-all placeholder:text-white/40 font-medium"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar por artículo, rubro o SKU (Enter)..."
+            className="w-full bg-black/25 border border-white/20 text-white text-xs rounded-pill pl-11 pr-5 py-2.5 outline-none focus:border-stockea-orange focus:bg-black/40 transition-all placeholder:text-white/50"
           />
-        </div>
+        </form>
 
-        {/* ── ACCIONES DERECHA ── */}
-        <div className="flex items-center gap-4 md:gap-6 flex-shrink-0">
+        {/* ACCIONES */}
+        <div className="flex items-center gap-3 md:gap-6 flex-shrink-0">
 
-          {/* Toggle Mayorista/Minorista (Desktop) */}
-          <div className="hidden md:flex items-center bg-stockea-navy-800 border border-white/5 rounded-pill p-1">
+          {/* Toggle Mayorista / Minorista */}
+          <div className="hidden md:flex items-center bg-black/25 border border-white/15 rounded-pill p-1">
             <button
+              type="button"
               onClick={() => setIsWholesale(false)}
-              className={`px-5 py-1.5 text-[10px] uppercase tracking-widest font-bold rounded-pill transition-all duration-300 ${
-                !isWholesale
-                  ? 'bg-stockea-cta text-stockea-navy-950 shadow-sm'
-                  : 'text-white/50 hover:text-white'
+              className={`px-4 py-1.5 text-[10px] uppercase font-bold rounded-pill transition-all ${
+                !isWholesale ? 'bg-stockea-orange text-white shadow' : 'text-white/70 hover:text-white'
               }`}
             >
               Minorista
             </button>
             <button
+              type="button"
               onClick={() => setIsWholesale(true)}
-              className={`px-5 py-1.5 text-[10px] uppercase tracking-widest font-bold rounded-pill transition-all duration-300 flex items-center gap-1.5 ${
-                isWholesale
-                  ? 'bg-stockea-cta text-stockea-navy-950 shadow-sm'
-                  : 'text-white/50 hover:text-white'
+              className={`px-4 py-1.5 text-[10px] uppercase font-bold rounded-pill transition-all flex items-center gap-1.5 ${
+                isWholesale ? 'bg-stockea-orange text-white shadow' : 'text-white/70 hover:text-white'
               }`}
             >
-              <Store size={12} strokeWidth={2} /> Mayorista
+              <Store size={12} /> Mayorista
             </button>
           </div>
 
-          {/* Acceso Rápido a Panel de Control / Usuario */}
+          {/* Botón Admin */}
           <Link
             to="/admin"
-            className="p-2 text-white/80 hover:text-stockea-cta hover:bg-white/5 rounded-full transition-colors"
-            title="Panel de Administración"
-            aria-label="Panel de Administración"
+            className="p-2 text-white/90 hover:text-stockea-orange hover:bg-white/10 rounded-full transition-colors"
+            title="Panel de Control"
           >
-            <User size={21} strokeWidth={1.6} />
+            <User size={20} />
           </Link>
 
-          {/* Icono del Carrito */}
+          {/* Carrito */}
           <button
             onClick={() => setIsCartOpen(true)}
-            className="relative p-2 text-white/80 hover:text-stockea-cta transition-colors"
+            className="relative p-2 text-white/90 hover:text-stockea-orange hover:bg-white/10 rounded-full transition-colors"
             aria-label="Ver carrito"
           >
-            <ShoppingBag size={22} strokeWidth={1.5} />
+            <ShoppingBag size={21} />
             {totalItems > 0 && (
-              <span className="absolute top-0 right-0 w-[18px] h-[18px] bg-stockea-cta text-stockea-navy-950 text-[9px] font-bold flex items-center justify-center rounded-full shadow-sm border-2 border-stockea-navy-950">
+              <span className="absolute top-0 right-0 w-4 h-4 bg-stockea-orange text-white text-[9px] font-bold flex items-center justify-center rounded-full border border-stockea-green">
                 {totalItems}
               </span>
             )}
@@ -94,53 +103,48 @@ export const Navbar = () => {
         </div>
       </div>
 
-      {/* ── MENÚ MOBILE DESPLEGABLE ── */}
-      <div 
-        className={`lg:hidden overflow-hidden transition-all duration-300 ease-in-out border-b border-white/10 ${
-          mobileMenuOpen ? 'max-h-80 opacity-100' : 'max-h-0 opacity-0 border-transparent'
-        }`}
-      >
-        <div className="px-4 py-6 bg-stockea-navy-950 flex flex-col gap-4">
-          {/* Buscador Mobile */}
-          <div className="relative">
-            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
+      {/* MENÚ MÓVIL */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden px-4 py-5 bg-stockea-green-dark border-b border-white/15 flex flex-col gap-4">
+          <form onSubmit={handleSearchSubmit} className="relative">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/50" />
             <input
               type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
               placeholder="Buscar productos..."
-              className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-pill pl-11 pr-5 py-3 outline-none focus:border-stockea-cta transition-all placeholder:text-white/40"
+              className="w-full bg-black/30 border border-white/20 text-white text-xs rounded-pill pl-10 pr-4 py-2.5 outline-none focus:border-stockea-orange"
             />
-          </div>
+          </form>
 
-          {/* Toggle Mayorista/Minorista Mobile */}
-          <div className="flex bg-stockea-navy-800 border border-white/5 rounded-pill p-1">
+          <div className="flex bg-black/25 border border-white/15 rounded-pill p-1">
             <button
               onClick={() => { setIsWholesale(false); setMobileMenuOpen(false); }}
-              className={`flex-1 py-2 text-[10px] uppercase tracking-widest font-bold rounded-pill transition-all duration-300 ${
-                !isWholesale ? 'bg-stockea-cta text-stockea-navy-950' : 'text-white/50'
+              className={`flex-1 py-1.5 text-[10px] uppercase font-bold rounded-pill ${
+                !isWholesale ? 'bg-stockea-orange text-white' : 'text-white/70'
               }`}
             >
               Minorista
             </button>
             <button
               onClick={() => { setIsWholesale(true); setMobileMenuOpen(false); }}
-              className={`flex-1 py-2 flex justify-center items-center gap-1.5 text-[10px] uppercase tracking-widest font-bold rounded-pill transition-all duration-300 ${
-                isWholesale ? 'bg-stockea-cta text-stockea-navy-950' : 'text-white/50'
+              className={`flex-1 py-1.5 text-[10px] uppercase font-bold rounded-pill flex justify-center items-center gap-1 ${
+                isWholesale ? 'bg-stockea-orange text-white' : 'text-white/70'
               }`}
             >
-              <Store size={12} strokeWidth={2} /> Mayorista
+              <Store size={12} /> Mayorista
             </button>
           </div>
 
-          {/* Enlace al Admin en Mobile */}
           <Link
             to="/admin"
             onClick={() => setMobileMenuOpen(false)}
-            className="flex items-center justify-center gap-2 py-2.5 text-xs font-semibold uppercase tracking-widest text-white/70 hover:text-stockea-cta border border-white/10 rounded-pill transition-colors"
+            className="flex items-center justify-center gap-2 py-2 text-xs uppercase font-bold text-white/80 border border-white/20 rounded-pill"
           >
-            <User size={15} strokeWidth={1.6} /> Panel de Administración
+            <User size={14} /> Panel Administrador
           </Link>
         </div>
-      </div>
+      )}
     </header>
   );
 };

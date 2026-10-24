@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Loader2, ChevronLeft, ChevronRight, Package, Search, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Package, Search, ArrowUpDown } from 'lucide-react';
 import { useProducts } from '../hooks/useProducts';
 import { ProductCard } from '../components/stock/ProductCard';
 
@@ -13,7 +13,7 @@ export const Catalog = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('relevance');
 
-  // Estados de Paginado adaptativo
+  // Paginado adaptativo (6 móvil / 8 escritorio)
   const [currentPage, setCurrentPage] = useState(1);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
 
@@ -23,7 +23,7 @@ export const Catalog = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Sincronizar parámetro URL si entra desde el Bento Grid
+  // Sincronizar parámetro URL si viene desde el Inicio
   useEffect(() => {
     const catQuery = searchParams.get('categoria');
     if (catQuery) {
@@ -64,14 +64,13 @@ export const Catalog = () => {
     return list;
   }, [products, activeCategory, searchTerm, sortBy]);
 
-  // 6 artículos en celular / 8 en computadora
   const itemsPerPage = isMobile ? 6 : 8;
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
   const currentProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
-    window.scrollTo({ top: 120, behavior: 'smooth' });
+    window.scrollTo({ top: 100, behavior: 'smooth' });
   };
 
   const handleCategorySelect = (cat) => {
@@ -86,46 +85,49 @@ export const Catalog = () => {
 
   if (loading) {
     return (
-      <div className="min-h-[70vh] flex flex-col items-center justify-center text-stockea-text-muted bg-stockea-bg">
-        <Loader2 className="animate-spin mb-4 text-stockea-cta" size={40} />
-        <p className="font-display text-lg tracking-wide">Cargando catálogo...</p>
+      <div className="min-h-[70vh] flex flex-col items-center justify-center text-stockea-graphite-muted bg-stockea-bg font-sans">
+        <Loader2 className="animate-spin mb-4 text-stockea-orange" size={40} />
+        <p className="font-display font-bold text-lg text-stockea-green tracking-wide">Cargando catálogo comercial...</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-stockea-bg min-h-screen pt-10 pb-24 selection:bg-stockea-cta selection:text-white">
+    <div className="bg-stockea-bg min-h-screen pt-10 pb-24 selection:bg-stockea-orange-soft selection:text-stockea-orange font-sans">
       <div className="max-w-7xl mx-auto px-4 md:px-8">
 
-        {/* ── HEADER ── */}
+        {/* ── ENCABEZADO ── */}
         <div className="text-center mb-10">
-          <h1 className="font-display text-4xl md:text-5xl font-bold text-stockea-navy-950 mb-3 tracking-tight">
-            Catálogo Comercial
+          <span className="text-[10px] uppercase tracking-[0.25em] text-stockea-orange font-bold block mb-2">
+            Inventario Central
+          </span>
+          <h1 className="font-display text-4xl md:text-5xl font-black text-stockea-green mb-3 tracking-tight">
+            Catálogo Oficial
           </h1>
-          <p className="text-stockea-text-muted text-sm max-w-xl mx-auto">
-            Inventario unificado. Las listas mayoristas 1, 2 y 3 se calculan dinámicamente al sumar unidades al pedido.
+          <p className="text-stockea-graphite-muted text-sm max-w-xl mx-auto">
+            Disponibilidad directa de depósito. Los tramos mayoristas x3, x6 y x12+ se aplican de forma automática en tu pedido.
           </p>
         </div>
 
-        {/* ── HERRAMIENTAS: BÚSQUEDA Y ORDENAMIENTO ── */}
+        {/* ── BARRA DE BÚSQUEDA Y ORDENAMIENTO ── */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
           <div className="relative w-full sm:w-80">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stockea-text-muted/60" />
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stockea-graphite-muted/60" />
             <input
               type="text"
-              placeholder="Buscar por nombre o SKU..."
+              placeholder="Buscar por artículo o SKU..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-stockea-surface border border-stockea-border rounded-pill pl-10 pr-4 py-2.5 text-xs text-stockea-navy-950 outline-none focus:border-stockea-navy-950 shadow-sm"
+              className="w-full bg-stockea-surface border border-stockea-border rounded-pill pl-10 pr-4 py-2.5 text-xs text-stockea-graphite outline-none focus:border-stockea-orange shadow-sm font-sans"
             />
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            <ArrowUpDown size={14} className="text-stockea-text-muted hidden sm:block" />
+            <ArrowUpDown size={14} className="text-stockea-graphite-muted hidden sm:block" />
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="bg-stockea-surface border border-stockea-border rounded-pill px-4 py-2.5 text-xs text-stockea-navy-950 font-semibold outline-none focus:border-stockea-navy-950 shadow-sm cursor-pointer"
+              className="bg-stockea-surface border border-stockea-border rounded-pill px-4 py-2.5 text-xs text-stockea-graphite font-semibold outline-none focus:border-stockea-orange shadow-sm cursor-pointer font-sans"
             >
               <option value="relevance">Orden: Relevancia</option>
               <option value="price-asc">Menor precio minorista</option>
@@ -135,7 +137,7 @@ export const Catalog = () => {
           </div>
         </div>
 
-        {/* ── BARRA STICKY DE CATEGORÍAS ── */}
+        {/* ── SELECTOR STICKY DE RUBROS ── */}
         <div className="sticky top-[80px] z-30 bg-stockea-bg/95 backdrop-blur-md py-3 mb-8 border-b border-stockea-border shadow-sm">
           <div className="flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {categories.map(cat => {
@@ -148,8 +150,8 @@ export const Catalog = () => {
                   onClick={() => handleCategorySelect(cat)}
                   className={`whitespace-nowrap px-5 py-2 text-[10px] font-bold uppercase tracking-widest rounded-pill border transition-all duration-200 flex-shrink-0 ${
                     isSelected
-                      ? 'bg-stockea-navy-950 text-white border-stockea-navy-950 shadow-sm'
-                      : 'bg-stockea-surface text-stockea-text-muted border-stockea-border hover:border-stockea-navy-950 hover:text-stockea-navy-950'
+                      ? 'bg-stockea-green text-white border-stockea-green shadow-sm'
+                      : 'bg-stockea-surface text-stockea-graphite-muted border-stockea-border hover:border-stockea-green hover:text-stockea-green'
                   }`}
                 >
                   {cat === 'all' ? 'Ver Todo' : cat}
@@ -163,17 +165,18 @@ export const Catalog = () => {
         {filteredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 border border-dashed border-stockea-border rounded-card bg-stockea-surface">
             <Package size={44} strokeWidth={1.2} className="text-stockea-border mb-3" />
-            <p className="font-display text-base font-bold text-stockea-navy-950">No hay productos que coincidan</p>
-            <p className="text-stockea-text-muted text-xs mt-1">Intentá con otros términos de búsqueda o remové la categoría activa.</p>
+            <p className="font-display text-base font-bold text-stockea-green">No encontramos productos en este criterio</p>
+            <p className="text-stockea-graphite-muted text-xs mt-1">Modificá los filtros de búsqueda o elegí otra categoría.</p>
           </div>
         ) : (
           <>
             <div className="flex items-center justify-between mb-4">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-stockea-text-muted">
-                {filteredProducts.length} {filteredProducts.length === 1 ? 'artículo encontrado' : 'artículos encontrados'}
+              <span className="text-[10px] font-bold uppercase tracking-widest text-stockea-graphite-muted">
+                {filteredProducts.length} {filteredProducts.length === 1 ? 'producto listado' : 'productos listados'}
               </span>
             </div>
 
+            {/* 2 Columnas en móvil y 4 en escritorio */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-8 md:gap-x-6 md:gap-y-12 mb-16">
               {currentProducts.map(product => (
                 <ProductCard key={product.id} product={product} />
@@ -186,19 +189,19 @@ export const Catalog = () => {
                 <button
                   disabled={currentPage === 1}
                   onClick={() => handlePageChange(currentPage - 1)}
-                  className="flex items-center gap-1.5 px-4 py-2 border border-stockea-border text-stockea-navy-950 text-xs font-bold uppercase tracking-wider rounded-pill disabled:opacity-30 disabled:cursor-not-allowed hover:border-stockea-navy-950 bg-white shadow-sm transition-all"
+                  className="flex items-center gap-1.5 px-4 py-2 border border-stockea-border text-stockea-green text-xs font-bold uppercase tracking-wider rounded-pill disabled:opacity-30 disabled:cursor-not-allowed hover:border-stockea-green bg-white shadow-sm transition-all"
                 >
                   <ChevronLeft size={14} /> Anterior
                 </button>
 
-                <span className="text-[11px] font-mono font-bold text-stockea-navy-950 bg-stockea-surface border border-stockea-border px-3.5 py-1.5 rounded-pill shadow-sm">
+                <span className="text-[11px] font-mono font-bold text-stockea-green bg-stockea-surface border border-stockea-border px-3.5 py-1.5 rounded-pill shadow-sm">
                   {currentPage} / {totalPages}
                 </span>
 
                 <button
                   disabled={currentPage === totalPages}
                   onClick={() => handlePageChange(currentPage + 1)}
-                  className="flex items-center gap-1.5 px-4 py-2 border border-stockea-border text-stockea-navy-950 text-xs font-bold uppercase tracking-wider rounded-pill disabled:opacity-30 disabled:cursor-not-allowed hover:border-stockea-navy-950 bg-white shadow-sm transition-all"
+                  className="flex items-center gap-1.5 px-4 py-2 border border-stockea-border text-stockea-green text-xs font-bold uppercase tracking-wider rounded-pill disabled:opacity-30 disabled:cursor-not-allowed hover:border-stockea-green bg-white shadow-sm transition-all"
                 >
                   Siguiente <ChevronRight size={14} />
                 </button>
