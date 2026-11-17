@@ -17,6 +17,7 @@ export const useProducts = () => {
           sku,
           nombre,
           descripcion,
+          caracteristicas,
           fotos,
           precio_venta,
           precio_mayorista_1,
@@ -48,6 +49,7 @@ export const useProducts = () => {
           sku: p.sku,
           title: p.nombre,
           description: p.descripcion || '',
+          characteristics: p.caracteristicas || '', // <--- ¡Mapeo correcto agregado aquí!
           retailPrice,
           wholesalePrice: wholesale1,
           wholesalePriceTier2: wholesale2,

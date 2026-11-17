@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Package, CheckCircle, Image as ImageIcon, LogOut, List, PlusCircle, Edit2, Check, X, Loader2, Star, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Package, CheckCircle, Image as ImageIcon, LogOut, List, PlusCircle, Edit2, Check, X, Loader2, Star, Search, ChevronLeft, ChevronRight, Layers } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { useProducts } from '../hooks/useProducts';
 import { AdminLogin } from '../components/admin/AdminLogin';
@@ -7,12 +7,22 @@ import { AdminLogin } from '../components/admin/AdminLogin';
 export const Admin = () => {
   const [session, setSession] = useState(null);
   const [activeTab, setActiveTab] = useState('list');
+  const [activeSubTab, setActiveSubTab] = useState('products');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [imagePreview, setImagePreview] = useState(null);
-  const [fileToUpload, setFileToUpload] = useState(null);
+  
+  // Estados para productos
+  const [imagePreviews, setImagePreviews] = useState([]);
+  const [filesToUpload, setFilesToUpload] = useState([]);
+
+  // Estados para categorías/rubros
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [categoryForm, setCategoryForm] = useState({ nombre: '', imagen_url: '' });
+  const [categoryImagePreview, setCategoryImagePreview] = useState(null);
+  const [categoryFileToUpload, setCategoryFileToUpload] = useState(null);
 
   const { products, refetch } = useProducts();
   const [categoriesList, setCategoriesList] = useState([]);
@@ -28,6 +38,7 @@ export const Admin = () => {
     stock: 'disponible',
     sku: '',
     description: '',
+    characteristics: '',
     destacado: false
   });
 
@@ -39,11 +50,12 @@ export const Admin = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  const loadCategories = async () => {
+    const { data, error } = await supabase.from('categorias').select('*').order('nombre');
+    if (!error && data) setCategoriesList(data);
+  };
+
   useEffect(() => {
-    const loadCategories = async () => {
-      const { data, error } = await supabase.from('categorias').select('id, nombre').order('nombre');
-      if (!error && data) setCategoriesList(data);
-    };
     loadCategories();
   }, []);
 
@@ -52,7 +64,6 @@ export const Admin = () => {
     setSession(null);
   };
 
-  // Filtrado y paginado del panel
   const filteredProducts = useMemo(() => {
     return products.filter(p => 
       p.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -78,10 +89,11 @@ export const Admin = () => {
       stock: product.stock === 'agotado' ? 'agotado' : 'disponible',
       sku: product.sku || '',
       description: product.description || '',
+      characteristics: product.characteristics || '',
       destacado: Boolean(product.isFeatured)
     });
-    setImagePreview(product.image);
-    setFileToUpload(null);
+    setImagePreviews(product.images || [product.image]);
+    setFilesToUpload([]);
     setActiveTab('form');
   };
 
@@ -97,62 +109,64 @@ export const Admin = () => {
       stock: 'disponible',
       sku: '',
       description: '',
+      characteristics: '',
       destacado: false
     });
-    setImagePreview(null);
-    setFileToUpload(null);
+    setImagePreviews([]);
+    setFilesToUpload([]);
     setActiveTab('form');
   };
 
-  const handleImageChange = (e) => {
+  const handleImagesChange = (e) => {
+    const chosenFiles = Array.from(e.target.files);
+    if (chosenFiles.length === 0) return;
+
+    const newPreviews = chosenFiles.map(file => URL.createObjectURL(file));
+    setImagePreviews(prev => [...prev, ...newPreviews]);
+    setFilesToUpload(prev => [...prev, ...chosenFiles]);
+  };
+
+  const removeImagePreview = (index) => {
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+    setFilesToUpload(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Manejo de la imagen del Rubro seleccionada desde archivo
+  const handleCategoryImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    setImagePreview(URL.createObjectURL(file));
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target.result;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-        canvas.toBlob((blob) => {
-          setFileToUpload(new File([blob], `producto_${Date.now()}.webp`, { type: 'image/webp' }));
-        }, 'image/webp', 0.8);
-      };
-    };
-    reader.readAsDataURL(file);
+    setCategoryImagePreview(URL.createObjectURL(file));
+    setCategoryFileToUpload(file);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.id && !fileToUpload) return alert("Seleccioná una imagen para el producto nuevo.");
+    if (imagePreviews.length === 0) return alert("Seleccioná al menos una imagen para el producto.");
     setIsSubmitting(true);
 
     try {
-      let publicUrl = imagePreview;
+      let finalUrls = [...imagePreviews.filter(url => url.startsWith('http'))];
 
-      if (fileToUpload) {
+      for (const file of filesToUpload) {
+        const fileName = `prod_${Date.now()}_${Math.random().toString(36).substring(7)}.webp`;
         const { error: uploadError } = await supabase.storage
           .from('fotos_stockea')
-          .upload(fileToUpload.name, fileToUpload);
+          .upload(fileName, file);
 
         if (uploadError) throw uploadError;
 
         const { data } = supabase.storage
           .from('fotos_stockea')
-          .getPublicUrl(fileToUpload.name);
+          .getPublicUrl(fileName);
 
-        publicUrl = data.publicUrl;
+        finalUrls.push(data.publicUrl);
       }
 
       const productData = {
         nombre: formData.title,
         sku: formData.sku || null,
         descripcion: formData.description || '',
+        caracteristicas: formData.characteristics || '',
         precio_venta: Number(formData.retailPrice),
         precio_mayorista_1: Number(formData.wholesalePrice1),
         precio_mayorista_2: Number(formData.wholesalePrice2 || formData.wholesalePrice1),
@@ -161,7 +175,7 @@ export const Admin = () => {
         stock_actual: formData.stock === 'disponible' ? 10 : 0,
         activo: true,
         destacado: formData.destacado,
-        fotos: [publicUrl]
+        fotos: finalUrls
       };
 
       if (formData.id) {
@@ -189,6 +203,55 @@ export const Admin = () => {
     }
   };
 
+  // Guardar categoría / rubro subiendo imagen a Supabase Storage con manejo de errores limpio
+  const handleSaveCategory = async (e) => {
+    e.preventDefault();
+    if (!categoryForm.nombre) return;
+
+    try {
+      let finalCategoryImg = categoryForm.imagen_url;
+
+      if (categoryFileToUpload) {
+        const fileName = `cat_${Date.now()}_${Math.random().toString(36).substring(7)}.webp`;
+        const { error: uploadError } = await supabase.storage
+          .from('fotos_stockea')
+          .upload(fileName, categoryFileToUpload);
+
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage
+          .from('fotos_stockea')
+          .getPublicUrl(fileName);
+
+        finalCategoryImg = data.publicUrl;
+      }
+
+      if (editingCategory) {
+        const { error } = await supabase
+          .from('categorias')
+          .update({ nombre: categoryForm.nombre, imagen_url: finalCategoryImg })
+          .eq('id', editingCategory.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('categorias')
+          .insert([{ nombre: categoryForm.nombre, imagen_url: finalCategoryImg }]);
+        if (error) throw error;
+      }
+
+      setCategoryModalOpen(false);
+      setEditingCategory(null);
+      setCategoryForm({ nombre: '', imagen_url: '' });
+      setCategoryImagePreview(null);
+      setCategoryFileToUpload(null);
+      loadCategories();
+      if (refetch) refetch();
+    } catch (err) {
+      console.error("Error detallado al guardar categoría:", err.message || err);
+      alert("No se pudo guardar el rubro. Verificá los permisos del bucket Storage en Supabase.");
+    }
+  };
+
   if (!session) {
     return <AdminLogin onLoginSuccess={(s) => setSession(s)} />;
   }
@@ -204,20 +267,28 @@ export const Admin = () => {
               <Package size={22} />
             </div>
             <div>
-              <h1 className="font-display text-xl font-black text-stockea-green">Gestión de Catálogo</h1>
-              <p className="text-[11px] text-stockea-graphite-muted">Administración comercial en tiempo real</p>
+              <h1 className="font-display text-xl font-black text-stockea-green">Gestión de Catálogo & Rubros</h1>
+              <p className="text-[11px] text-stockea-graphite-muted">Panel de administración comercial</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3 w-full md:w-auto">
             <div className="flex bg-stockea-green-soft rounded-pill p-1 flex-1 md:flex-none">
               <button
-                onClick={() => setActiveTab('list')}
+                onClick={() => { setActiveTab('list'); setActiveSubTab('products'); }}
                 className={`flex-1 md:flex-none px-4 py-1.5 text-[10px] font-bold uppercase rounded-pill transition-colors ${
-                  activeTab === 'list' ? 'bg-stockea-green text-white' : 'text-stockea-graphite-muted hover:text-stockea-green'
+                  activeTab === 'list' && activeSubTab === 'products' ? 'bg-stockea-green text-white' : 'text-stockea-graphite-muted hover:text-stockea-green'
                 }`}
               >
-                <List size={13} className="inline mr-1" /> Catálogo
+                <List size={13} className="inline mr-1" /> Productos
+              </button>
+              <button
+                onClick={() => { setActiveTab('list'); setActiveSubTab('categories'); }}
+                className={`flex-1 md:flex-none px-4 py-1.5 text-[10px] font-bold uppercase rounded-pill transition-colors ${
+                  activeTab === 'list' && activeSubTab === 'categories' ? 'bg-stockea-green text-white' : 'text-stockea-graphite-muted hover:text-stockea-green'
+                }`}
+              >
+                <Layers size={13} className="inline mr-1" /> Rubros / Categorías
               </button>
               <button
                 onClick={handleNewProduct}
@@ -225,7 +296,7 @@ export const Admin = () => {
                   activeTab === 'form' ? 'bg-stockea-green text-white' : 'text-stockea-graphite-muted hover:text-stockea-green'
                 }`}
               >
-                <PlusCircle size={13} className="inline mr-1" /> Nuevo
+                <PlusCircle size={13} className="inline mr-1" /> Nuevo Producto
               </button>
             </div>
 
@@ -244,8 +315,8 @@ export const Admin = () => {
           </div>
         )}
 
-        {/* TAB 1: LISTADO PAGINADO */}
-        {activeTab === 'list' && (
+        {/* TAB 1A: LISTADO DE PRODUCTOS */}
+        {activeTab === 'list' && activeSubTab === 'products' && (
           <div>
             <div className="flex justify-between items-center mb-4 gap-4">
               <div className="relative w-full max-w-xs">
@@ -314,7 +385,6 @@ export const Admin = () => {
               </table>
             </div>
 
-            {/* Paginación de la tabla */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between border-t border-stockea-border pt-4 mt-4 text-xs">
                 <span className="text-stockea-graphite-muted">Página {currentPage} de {totalPages}</span>
@@ -339,14 +409,67 @@ export const Admin = () => {
           </div>
         )}
 
-        {/* TAB 2: FORMULARIO */}
+        {/* TAB 1B: LISTADO DE CATEGORÍAS / RUBROS CON IMAGEN */}
+        {activeTab === 'list' && activeSubTab === 'categories' && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-display font-bold text-base text-stockea-green">Rubros y Familias de Artículos</h3>
+              <button
+                onClick={() => { 
+                  setEditingCategory(null); 
+                  setCategoryForm({ nombre: '', imagen_url: '' }); 
+                  setCategoryImagePreview(null);
+                  setCategoryFileToUpload(null);
+                  setCategoryModalOpen(true); 
+                }}
+                className="bg-stockea-orange hover:bg-stockea-orange-hover text-white text-xs font-bold uppercase px-4 py-2 rounded-pill transition-colors flex items-center gap-1.5"
+              >
+                <PlusCircle size={14} /> Nuevo Rubro
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {categoriesList.map(cat => (
+                <div key={cat.id} className="bg-stockea-bg border border-stockea-border rounded-card overflow-hidden flex flex-col justify-between">
+                  <div className="relative h-32 bg-stockea-green-soft">
+                    {cat.imagen_url ? (
+                      <img src={cat.imagen_url} alt={cat.nombre} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-stockea-graphite-muted text-xs">Sin imagen</div>
+                    )}
+                    <span className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-pill font-bold">
+                      {cat.nombre}
+                    </span>
+                  </div>
+                  <div className="p-3 flex justify-between items-center bg-stockea-surface">
+                    <span className="text-xs font-bold text-stockea-green truncate">{cat.nombre}</span>
+                    <button
+                      onClick={() => { 
+                        setEditingCategory(cat); 
+                        setCategoryForm({ nombre: cat.nombre, imagen_url: cat.imagen_url || '' }); 
+                        setCategoryImagePreview(cat.imagen_url || null);
+                        setCategoryFileToUpload(null);
+                        setCategoryModalOpen(true); 
+                      }}
+                      className="px-2.5 py-1 border border-stockea-border rounded text-xs hover:border-stockea-green text-stockea-green flex items-center gap-1"
+                    >
+                      <Edit2 size={11} /> Editar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: FORMULARIO DE PRODUCTO */}
         {activeTab === 'form' && (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
               <div className="space-y-4">
                 <div>
-                  <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold block mb-1">Nombre</label>
+                  <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold block mb-1">Nombre del Producto</label>
                   <input
                     required
                     type="text"
@@ -381,6 +504,28 @@ export const Admin = () => {
                       ))}
                     </select>
                   </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold block mb-1">Descripción General</label>
+                  <textarea
+                    rows="3"
+                    value={formData.description}
+                    onChange={e => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Detalles principales del artículo..."
+                    className="w-full bg-stockea-bg border border-stockea-border rounded-lg px-3 py-2 text-xs outline-none focus:border-stockea-orange resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold block mb-1">Características (Especificaciones / Materiales)</label>
+                  <textarea
+                    rows="3"
+                    value={formData.characteristics}
+                    onChange={e => setFormData({ ...formData, characteristics: e.target.value })}
+                    placeholder="Ej: Material ABS, Medidas 20x10cm, Origen China..."
+                    className="w-full bg-stockea-bg border border-stockea-border rounded-lg px-3 py-2 text-xs outline-none focus:border-stockea-orange resize-none"
+                  />
                 </div>
 
                 <div className="flex items-center justify-between pt-2">
@@ -470,25 +615,39 @@ export const Admin = () => {
                   </div>
                 </div>
 
+                {/* Galería de Imágenes */}
                 <div>
-                  <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold block mb-1">Foto del Producto</label>
-                  <div className="relative border-2 border-dashed border-stockea-border bg-stockea-bg h-32 flex flex-col items-center justify-center rounded-card hover:border-stockea-orange transition-colors">
+                  <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold block mb-1">Galería de Imágenes (Múltiples fotos)</label>
+                  <div className="relative border-2 border-dashed border-stockea-border bg-stockea-bg p-4 flex flex-col items-center justify-center rounded-card hover:border-stockea-orange transition-colors">
                     <input
-                      required={!formData.id && !imagePreview}
                       type="file"
+                      multiple
                       accept="image/*"
-                      onChange={handleImageChange}
+                      onChange={handleImagesChange}
                       className="absolute inset-0 opacity-0 cursor-pointer"
                     />
-                    {imagePreview ? (
-                      <img src={imagePreview} className="w-full h-full object-contain p-2" alt="Vista previa" />
-                    ) : (
-                      <div className="text-center text-stockea-graphite-muted">
-                        <ImageIcon size={22} className="mx-auto mb-1 opacity-50" />
-                        <span className="text-[11px]">Click o arrastrá una imagen</span>
-                      </div>
-                    )}
+                    <div className="text-center text-stockea-graphite-muted">
+                      <ImageIcon size={22} className="mx-auto mb-1 opacity-50" />
+                      <span className="text-[11px]">Click o arrastrá imágenes para la galería</span>
+                    </div>
                   </div>
+
+                  {imagePreviews.length > 0 && (
+                    <div className="grid grid-cols-4 gap-2 mt-3">
+                      {imagePreviews.map((preview, index) => (
+                        <div key={index} className="relative group aspect-square bg-stockea-bg border border-stockea-border rounded-lg overflow-hidden">
+                          <img src={preview} className="w-full h-full object-cover" alt="Preview" />
+                          <button
+                            type="button"
+                            onClick={() => removeImagePreview(index)}
+                            className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -503,6 +662,82 @@ export const Admin = () => {
             </button>
           </form>
         )}
+
+        {/* MODAL EDITAR / CREAR CATEGORÍA CON PREVISUALIZACIÓN Y ENCUADRE */}
+{categoryModalOpen && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+    <div className="bg-stockea-surface border border-stockea-border rounded-card p-6 w-full max-w-md shadow-2xl">
+      <div className="flex justify-between items-center mb-4 border-b border-stockea-border pb-3">
+        <h3 className="font-display font-bold text-base text-stockea-green">
+          {editingCategory ? 'Editar Rubro' : 'Nuevo Rubro'}
+        </h3>
+        <button onClick={() => setCategoryModalOpen(false)} className="text-stockea-graphite-muted hover:text-stockea-green">
+          <X size={18} />
+        </button>
+      </div>
+
+      <form onSubmit={handleSaveCategory} className="space-y-4">
+        <div>
+          <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold block mb-1">Nombre del Rubro</label>
+          <input
+            required
+            type="text"
+            value={categoryForm.nombre}
+            onChange={e => setCategoryForm({ ...categoryForm, nombre: e.target.value })}
+            placeholder="Ej: Camping, Cocina..."
+            className="w-full bg-stockea-bg border border-stockea-border rounded-lg px-3 py-2 text-sm outline-none focus:border-stockea-orange"
+          />
+        </div>
+
+        <div>
+          <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold block mb-1">Imagen Ilustrativa del Rubro</label>
+          <div className="relative border-2 border-dashed border-stockea-border bg-stockea-bg h-32 flex flex-col items-center justify-center rounded-card hover:border-stockea-orange transition-colors overflow-hidden">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleCategoryImageChange}
+              className="absolute inset-0 opacity-0 cursor-pointer z-10"
+            />
+            {categoryImagePreview ? (
+              <img 
+                src={categoryImagePreview} 
+    className="w-full h-full object-cover" 
+    style={{ objectPosition: categoryForm.posicion_imagen || 'center' }}
+    alt="Rubro Preview"
+              />
+            ) : (
+              <div className="text-center text-stockea-graphite-muted">
+                <ImageIcon size={20} className="mx-auto mb-1 opacity-50" />
+                <span className="text-[11px]">Click o arrastrá una imagen</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Selector de encuadre / posición de la imagen */}
+        <div>
+          <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold block mb-1">Encuadre de la imagen en la tarjeta</label>
+          <select
+            value={categoryForm.posicion_imagen || 'center'}
+            onChange={e => setCategoryForm({ ...categoryForm, posicion_imagen: e.target.value })}
+            className="w-full bg-stockea-bg border border-stockea-border rounded-lg px-3 py-2 text-xs outline-none focus:border-stockea-orange"
+          >
+            <option value="center">Centrado (Por defecto)</option>
+            <option value="top">Arriba</option>
+            <option value="bottom">Abajo</option>
+          </select>
+        </div>
+
+        <button
+          type="submit"
+          className="w-full bg-stockea-orange hover:bg-stockea-orange-hover text-white font-bold text-xs uppercase tracking-widest py-3 rounded-lg transition-colors"
+        >
+          Guardar Rubro
+        </button>
+      </form>
+    </div>
+  </div>
+)}
 
       </div>
     </div>

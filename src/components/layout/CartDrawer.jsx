@@ -5,7 +5,7 @@ export const CartDrawer = () => {
   const { cart, removeFromCart, updateQuantity, getItemPrice, total, isCartOpen, setIsCartOpen } = useCart();
 
   const handleCheckoutWhatsApp = () => {
-    const phoneNumber = "5491100000000"; // Número comercial STOCKea
+    const phoneNumber = "5492664885550"; // Número comercial oficial STOCKea
     
     let mensaje = "¡Hola STOCKea! Quiero realizar el siguiente pedido:\n\n";
 

@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Loader2, ChevronLeft, ChevronRight, Package, Search, ArrowUpDown } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Package, Search, ArrowUpDown, Sparkles, ShieldCheck } from 'lucide-react';
 import { useProducts } from '../hooks/useProducts';
 import { ProductCard } from '../components/stock/ProductCard';
+
+import portadaImg from '../assets/portada.webp';
 
 export const Catalog = () => {
   const { products, loading } = useProducts();
@@ -93,21 +95,40 @@ export const Catalog = () => {
   }
 
   return (
-    <div className="bg-stockea-bg min-h-screen pt-10 pb-24 selection:bg-stockea-orange-soft selection:text-stockea-orange font-sans">
-      <div className="max-w-7xl mx-auto px-4 md:px-8">
-
-        {/* ── ENCABEZADO ── */}
-        <div className="text-center mb-10">
-          <span className="text-[10px] uppercase tracking-[0.25em] text-stockea-orange font-bold block mb-2">
-            Inventario Central
-          </span>
-          <h1 className="font-display text-4xl md:text-5xl font-black text-stockea-green mb-3 tracking-tight">
-            Catálogo Oficial
-          </h1>
-          <p className="text-stockea-graphite-muted text-sm max-w-xl mx-auto">
-            Disponibilidad directa de depósito. Los tramos mayoristas x3, x6 y x12+ se aplican de forma automática en tu pedido.
-          </p>
+    <div className="bg-stockea-bg min-h-screen pb-24 selection:bg-stockea-orange-soft selection:text-stockea-orange font-sans">
+      
+      {/* ── BANNER INSTITUCIONAL COMPACTO CON PORTADA ── */}
+      <div className="bg-stockea-graphite relative overflow-hidden mb-8 border-b border-stockea-border shadow-md">
+        {/* Imagen de portada de fondo con opacidad y filtro */}
+        <div className="absolute inset-0 z-0">
+          <img src={portadaImg} alt="Stockea Portada" className="w-full h-full object-cover opacity-45" />
+          <div className="absolute inset-0 bg-gradient-to-r from-stockea-graphite via-stockea-graphite/10 to-transparent" />
         </div>
+
+        <div className="max-w-7xl mx-auto py-10 md:py-12 px-4 md:px-8 relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 bg-black/30 border border-white/15 px-3 py-1 rounded-pill text-stockea-orange text-[10px] font-bold uppercase tracking-[0.2em] mb-2.5 backdrop-blur-xs">
+              <Sparkles size={12} /> Stock Directo de Depósito
+            </div>
+            <h1 className="font-display text-2xl sm:text-4xl font-black text-white tracking-tight mb-2">
+              Catálogo Oficial
+            </h1>
+            <p className="text-white/80 text-xs md:text-sm max-w-xl leading-relaxed">
+              Explorá nuestra variedad de artículos importados. Recordá que sumando más de 3 unidades obtenés el beneficio mayorista automático.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 bg-black/40 border border-white/15 px-5 py-3 rounded-2xl backdrop-blur-xs flex-shrink-0 shadow-lg">
+            <ShieldCheck size={26} className="text-stockea-orange" />
+            <div className="text-left">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-white">Atención Mayorista</p>
+              <p className="text-[10px] text-white/70">Envíos a todo el país desde San Luis</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 md:px-8">
 
         {/* ── BARRA DE BÚSQUEDA Y ORDENAMIENTO ── */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
