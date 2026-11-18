@@ -2,14 +2,14 @@ import { useState } from 'react';
 
 export const FloatingWhatsApp = () => {
   const [hovered, setHovered] = useState(false);
-  const phoneNumber = "5491100000000";
-  const message = "Hola STOCKea! Quisiera recibir asesoramiento.";
+  const phoneNumber = "5492664885550";
+  const message = "¡Hola STOCKea! Quisiera recibir asesoramiento sobre los productos y precios mayoristas.";
 
   return (
     <div className="fixed bottom-6 right-6 z-40 flex items-center gap-3">
       {/* Tooltip Elegante */}
       <span
-        className="text-[10px] font-bold uppercase tracking-widest text-stockea-navy-950 bg-white border border-stockea-border px-4 py-2 rounded-sm shadow-card pointer-events-none"
+        className="text-[10px] font-bold uppercase tracking-widest text-stockea-graphite bg-white border border-stockea-border px-4 py-2 rounded-sm shadow-card pointer-events-none"
         style={{
           opacity: hovered ? 1 : 0,
           transform: hovered ? "translateX(0)" : "translateX(8px)",
@@ -31,16 +31,16 @@ export const FloatingWhatsApp = () => {
       >
         {/* Anillo de pulso sutil */}
         <span 
-          className="absolute inset-0 rounded-full animate-ping opacity-60" 
+          className="absolute inset-0 rounded-full animate-ping opacity-60 pointer-events-none" 
           style={{ backgroundColor: "#25D366", animationDuration: '2s' }} 
         />
 
-        {/* Notificación con contraste Navy/Dorado */}
-        <span className="absolute -top-1 -right-1 flex items-center justify-center w-[22px] h-[22px] rounded-full text-[10px] font-bold bg-stockea-navy-950 text-stockea-cta border-2 border-white shadow-sm z-10">
+        {/* Notificación con contraste en Naranja */}
+        <span className="absolute -top-1 -right-1 flex items-center justify-center w-[22px] h-[22px] rounded-full text-[10px] font-extrabold bg-stockea-orange text-white border-2 border-white shadow-sm z-10">
           1
         </span>
 
-        {/* SVG Oficial vectorizado */}
+        {/* SVG Oficial de WhatsApp */}
         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" viewBox="0 0 16 16" className="relative z-10">
           <path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232" />
         </svg>

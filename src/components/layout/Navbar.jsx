@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ShoppingBag, Search, Menu, X, User, MessageCircle, Home, Package } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import logo from '../../assets/logo.png';
@@ -9,6 +9,7 @@ export const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -16,6 +17,18 @@ export const Navbar = () => {
       navigate(`/catalogo?q=${encodeURIComponent(query.trim())}`);
       setMobileMenuOpen(false);
     }
+  };
+
+  // Función para manejar el clic en Inicio / Logo
+  const handleHomeClick = (e) => {
+    if (location.pathname === '/') {
+      e.preventDefault();
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+    setMobileMenuOpen(false);
   };
 
   const WHATSAPP_URL = "https://wa.me/5492664885550?text=Hola%20Stockea,%20quiero%20hacer%20una%20consulta%20sobre%20los%20productos.";
@@ -34,7 +47,7 @@ export const Navbar = () => {
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
           
-          <Link to="/" className="flex items-center py-1 group">
+          <Link to="/" onClick={handleHomeClick} className="flex items-center py-1 group">
             <img 
               src={logo} 
               alt="STOCKea" 
@@ -45,7 +58,7 @@ export const Navbar = () => {
 
         {/* ENLACES DE NAVEGACIÓN (ESCRITORIO) */}
         <nav className="hidden md:flex items-center gap-8 text-xs font-bold uppercase tracking-widest">
-          <Link to="/" className="text-white/90 hover:text-stockea-orange transition-colors">
+          <Link to="/" onClick={handleHomeClick} className="text-white/90 hover:text-stockea-orange transition-colors">
             Inicio
           </Link>
           <Link to="/catalogo" className="text-white/90 hover:text-stockea-orange transition-colors">
@@ -121,7 +134,7 @@ export const Navbar = () => {
           <div className="flex flex-col gap-1.5 pt-2 border-t border-white/10">
             <Link
               to="/"
-              onClick={() => setMobileMenuOpen(false)}
+              onClick={handleHomeClick}
               className="flex items-center gap-3 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white/90 hover:text-stockea-orange hover:bg-white/5 rounded-xl transition-colors"
             >
               <Home size={16} className="text-stockea-orange" /> Inicio

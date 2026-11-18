@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://stockeasl.com.ar/sitemap.xml
