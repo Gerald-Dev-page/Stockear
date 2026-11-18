@@ -10,9 +10,9 @@ export const Catalog = () => {
   const { products, loading } = useProducts();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Estados de Filtros
+  // Estados de Filtros sincronizados con URL
   const [activeCategory, setActiveCategory] = useState(searchParams.get('categoria') || 'all');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
   const [sortBy, setSortBy] = useState('relevance');
 
   // Paginado adaptativo (6 móvil / 8 escritorio)
@@ -25,11 +25,14 @@ export const Catalog = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Sincronizar parámetro URL si viene desde el Inicio
+  // Sincronizar parámetros URL (tanto categoría como búsqueda ?q= desde el Navbar)
   useEffect(() => {
     const catQuery = searchParams.get('categoria');
-    if (catQuery) {
-      setActiveCategory(catQuery);
+    const searchQuery = searchParams.get('q');
+
+    setActiveCategory(catQuery || 'all');
+    if (searchQuery !== null) {
+      setSearchTerm(searchQuery);
     }
   }, [searchParams]);
 
@@ -37,30 +40,44 @@ export const Catalog = () => {
     setCurrentPage(1);
   }, [activeCategory, searchTerm, sortBy]);
 
-  // Lista única de categorías
+  // Lista única de todas las categorías (incluyendo principales y secundarias)
   const categories = useMemo(() => {
-    return ['all', ...new Set(products.map(p => p.category).filter(Boolean))];
+    const allCats = products.flatMap(p => 
+      Array.isArray(p.categories) && p.categories.length > 0 ? p.categories : [p.category]
+    ).filter(Boolean);
+    return ['all', ...new Set(allCats)];
   }, [products]);
 
   // Filtrado y Ordenamiento
   const filteredProducts = useMemo(() => {
-    let list = products.filter(p => {
-      const matchCat = activeCategory === 'all' || 
-        p.category.toLowerCase().replace(/\s+/g, '-') === activeCategory.toLowerCase() ||
-        p.category.toLowerCase() === activeCategory.toLowerCase();
+    const normalizedActiveCat = activeCategory.toLowerCase();
+    const normalizedSearch = searchTerm.toLowerCase().trim();
 
-      const matchSearch = p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (p.sku && p.sku.toLowerCase().includes(searchTerm.toLowerCase()));
+    let list = products.filter(p => {
+      const productCats = Array.isArray(p.categories) && p.categories.length > 0 
+        ? p.categories 
+        : [p.category].filter(Boolean);
+
+      const matchCat = activeCategory === 'all' || 
+        productCats.some(cat => 
+          cat.toLowerCase().replace(/\s+/g, '-') === normalizedActiveCat ||
+          cat.toLowerCase() === normalizedActiveCat
+        );
+
+      const matchSearch = !normalizedSearch || 
+        p.title.toLowerCase().includes(normalizedSearch) ||
+        (p.sku && p.sku.toLowerCase().includes(normalizedSearch)) ||
+        productCats.some(cat => cat.toLowerCase().includes(normalizedSearch));
 
       return matchCat && matchSearch;
     });
 
     if (sortBy === 'price-asc') {
-      list.sort((a, b) => a.retailPrice - b.retailPrice);
+      list = [...list].sort((a, b) => a.retailPrice - b.retailPrice);
     } else if (sortBy === 'price-desc') {
-      list.sort((a, b) => b.retailPrice - a.retailPrice);
+      list = [...list].sort((a, b) => b.retailPrice - a.retailPrice);
     } else if (sortBy === 'wholesale-asc') {
-      list.sort((a, b) => a.wholesalePrice - b.wholesalePrice);
+      list = [...list].sort((a, b) => a.wholesalePrice - b.wholesalePrice);
     }
 
     return list;
@@ -77,12 +94,24 @@ export const Catalog = () => {
 
   const handleCategorySelect = (cat) => {
     setActiveCategory(cat);
+    const nextParams = new URLSearchParams(searchParams);
     if (cat === 'all') {
-      searchParams.delete('categoria');
-      setSearchParams(searchParams);
+      nextParams.delete('categoria');
     } else {
-      setSearchParams({ categoria: cat.toLowerCase().replace(/\s+/g, '-') });
+      nextParams.set('categoria', cat.toLowerCase().replace(/\s+/g, '-'));
     }
+    setSearchParams(nextParams);
+  };
+
+  const handleLocalSearchChange = (value) => {
+    setSearchTerm(value);
+    const nextParams = new URLSearchParams(searchParams);
+    if (value.trim()) {
+      nextParams.set('q', value);
+    } else {
+      nextParams.delete('q');
+    }
+    setSearchParams(nextParams, { replace: true });
   };
 
   if (loading) {
@@ -99,7 +128,6 @@ export const Catalog = () => {
       
       {/* ── BANNER INSTITUCIONAL COMPACTO CON PORTADA ── */}
       <div className="bg-stockea-graphite relative overflow-hidden mb-8 border-b border-stockea-border shadow-md">
-        {/* Imagen de portada de fondo con opacidad y filtro */}
         <div className="absolute inset-0 z-0">
           <img src={portadaImg} alt="Stockea Portada" className="w-full h-full object-cover opacity-45" />
           <div className="absolute inset-0 bg-gradient-to-r from-stockea-graphite via-stockea-graphite/10 to-transparent" />
@@ -138,7 +166,7 @@ export const Catalog = () => {
               type="text"
               placeholder="Buscar por artículo o SKU..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleLocalSearchChange(e.target.value)}
               className="w-full bg-stockea-surface border border-stockea-border rounded-pill pl-10 pr-4 py-2.5 text-xs text-stockea-graphite outline-none focus:border-stockea-orange shadow-sm font-sans"
             />
           </div>
@@ -162,8 +190,8 @@ export const Catalog = () => {
         <div className="sticky top-[80px] z-30 bg-stockea-bg/95 backdrop-blur-md py-3 mb-8 border-b border-stockea-border shadow-sm">
           <div className="flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {categories.map(cat => {
-              const isSelected = activeCategory === cat || 
-                (activeCategory === cat.toLowerCase().replace(/\s+/g, '-'));
+              const isSelected = activeCategory.toLowerCase() === cat.toLowerCase() || 
+                (activeCategory.toLowerCase() === cat.toLowerCase().replace(/\s+/g, '-'));
 
               return (
                 <button

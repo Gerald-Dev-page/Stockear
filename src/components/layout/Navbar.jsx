@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { ShoppingBag, Search, Menu, X, User, MessageCircle, Home, Package } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import logo from '../../assets/logo.png';
@@ -7,15 +7,41 @@ import logo from '../../assets/logo.png';
 export const Navbar = () => {
   const { totalItems, setIsCartOpen } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [query, setQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get('q') || '');
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Mantener sincronizado el buscador del Navbar con el parámetro ?q= de la URL
+  useEffect(() => {
+    const qParam = searchParams.get('q') || '';
+    setQuery(qParam);
+  }, [searchParams]);
+
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    if (query.trim()) {
-      navigate(`/catalogo?q=${encodeURIComponent(query.trim())}`);
-      setMobileMenuOpen(false);
+    const trimmed = query.trim();
+    setMobileMenuOpen(false);
+
+    if (trimmed) {
+      navigate(`/catalogo?q=${encodeURIComponent(trimmed)}`);
+    } else {
+      navigate('/catalogo');
+    }
+
+    // Desplaza suavemente hacia la sección de resultados (debajo del banner)
+    setTimeout(() => {
+      const resultsSection = document.getElementById('catalogo-resultados');
+      if (resultsSection) {
+        resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 150);
+  };
+
+  const handleClearSearch = () => {
+    setQuery('');
+    if (location.pathname === '/catalogo') {
+      navigate('/catalogo');
     }
   };
 
@@ -76,14 +102,30 @@ export const Navbar = () => {
 
         {/* BUSCADOR FUNCIONAL (DESKTOP) */}
         <form onSubmit={handleSearchSubmit} className="hidden lg:flex flex-1 max-w-xs relative group">
-          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-stockea-orange transition-colors" />
+          <button
+            type="submit"
+            aria-label="Buscar"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 group-focus-within:text-stockea-orange hover:text-stockea-orange transition-colors"
+          >
+            <Search size={16} />
+          </button>
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar por artículo o SKU..."
-            className="w-full bg-black/20 border border-white/20 text-white text-xs rounded-pill pl-11 pr-5 py-2.5 outline-none focus:border-stockea-orange focus:bg-black/35 transition-all placeholder:text-white/50 font-sans"
+            className="w-full bg-black/20 border border-white/20 text-white text-xs rounded-pill pl-11 pr-8 py-2.5 outline-none focus:border-stockea-orange focus:bg-black/35 transition-all placeholder:text-white/50 font-sans"
           />
+          {query && (
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              aria-label="Limpiar búsqueda"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors"
+            >
+              <X size={14} />
+            </button>
+          )}
         </form>
 
         {/* ACCIONES DERECHA */}
@@ -120,14 +162,29 @@ export const Navbar = () => {
           
           {/* Buscador móvil */}
           <form onSubmit={handleSearchSubmit} className="relative">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/50" />
+            <button
+              type="submit"
+              aria-label="Buscar"
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/50 hover:text-stockea-orange"
+            >
+              <Search size={16} />
+            </button>
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Buscar productos..."
-              className="w-full bg-black/25 border border-white/20 text-white text-xs rounded-pill pl-10 pr-4 py-3 outline-none focus:border-stockea-orange"
+              className="w-full bg-black/25 border border-white/20 text-white text-xs rounded-pill pl-10 pr-8 py-3 outline-none focus:border-stockea-orange"
             />
+            {query && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/50 hover:text-white"
+              >
+                <X size={15} />
+              </button>
+            )}
           </form>
 
           {/* Enlaces de navegación móvil */}

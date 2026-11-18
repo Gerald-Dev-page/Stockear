@@ -20,7 +20,7 @@ export const Admin = () => {
   // Estados para categorías/rubros
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
-  const [categoryForm, setCategoryForm] = useState({ nombre: '', imagen_url: '' });
+  const [categoryForm, setCategoryForm] = useState({ nombre: '', imagen_url: '', posicion_imagen: 'center' });
   const [categoryImagePreview, setCategoryImagePreview] = useState(null);
   const [categoryFileToUpload, setCategoryFileToUpload] = useState(null);
 
@@ -34,7 +34,7 @@ export const Admin = () => {
     wholesalePrice1: '',
     wholesalePrice2: '',
     wholesalePrice3: '',
-    category_id: '',
+    category_ids: [],
     stock: 'disponible',
     sku: '',
     description: '',
@@ -65,10 +65,12 @@ export const Admin = () => {
   };
 
   const filteredProducts = useMemo(() => {
+    const term = searchTerm.toLowerCase();
     return products.filter(p => 
-      p.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.category?.toLowerCase().includes(searchTerm.toLowerCase())
+      p.title?.toLowerCase().includes(term) ||
+      p.sku?.toLowerCase().includes(term) ||
+      p.category?.toLowerCase().includes(term) ||
+      p.categories?.some(cat => cat.toLowerCase().includes(term))
     );
   }, [products, searchTerm]);
 
@@ -77,7 +79,21 @@ export const Admin = () => {
   const paginatedProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleEditProduct = (product) => {
-    const matchedCategory = categoriesList.find(c => c.nombre === product.category);
+    // Recupera todos los IDs de categorías asociadas (desde categoryIds o buscando por nombre)
+    let initialCatIds = Array.isArray(product.categoryIds) && product.categoryIds.length > 0
+      ? product.categoryIds.map(Number)
+      : [];
+
+    if (initialCatIds.length === 0 && product.categoryId) {
+      initialCatIds = [Number(product.categoryId)];
+    }
+
+    if (initialCatIds.length === 0 && Array.isArray(product.categories)) {
+      initialCatIds = categoriesList
+        .filter(c => product.categories.includes(c.nombre))
+        .map(c => Number(c.id));
+    }
+
     setFormData({
       id: product.id,
       title: product.title,
@@ -85,7 +101,7 @@ export const Admin = () => {
       wholesalePrice1: product.wholesalePrice,
       wholesalePrice2: product.wholesalePriceTier2,
       wholesalePrice3: product.wholesalePriceTier3,
-      category_id: matchedCategory ? matchedCategory.id : (product.categoryId || ''),
+      category_ids: initialCatIds,
       stock: product.stock === 'agotado' ? 'agotado' : 'disponible',
       sku: product.sku || '',
       description: product.description || '',
@@ -105,7 +121,7 @@ export const Admin = () => {
       wholesalePrice1: '',
       wholesalePrice2: '',
       wholesalePrice3: '',
-      category_id: categoriesList[0]?.id || '',
+      category_ids: categoriesList[0]?.id ? [Number(categoriesList[0].id)] : [],
       stock: 'disponible',
       sku: '',
       description: '',
@@ -115,6 +131,17 @@ export const Admin = () => {
     setImagePreviews([]);
     setFilesToUpload([]);
     setActiveTab('form');
+  };
+
+  const toggleCategorySelection = (catId) => {
+    const numericId = Number(catId);
+    setFormData(prev => {
+      const exists = prev.category_ids.includes(numericId);
+      const updated = exists
+        ? prev.category_ids.filter(id => id !== numericId)
+        : [...prev.category_ids, numericId];
+      return { ...prev, category_ids: updated };
+    });
   };
 
   const handleImagesChange = (e) => {
@@ -131,7 +158,6 @@ export const Admin = () => {
     setFilesToUpload(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Manejo de la imagen del Rubro seleccionada desde archivo
   const handleCategoryImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -142,6 +168,8 @@ export const Admin = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (imagePreviews.length === 0) return alert("Seleccioná al menos una imagen para el producto.");
+    if (formData.category_ids.length === 0) return alert("Seleccioná al menos un rubro/categoría para el producto.");
+    
     setIsSubmitting(true);
 
     try {
@@ -162,6 +190,8 @@ export const Admin = () => {
         finalUrls.push(data.publicUrl);
       }
 
+      const primaryCategoryId = formData.category_ids[0] || null;
+
       const productData = {
         nombre: formData.title,
         sku: formData.sku || null,
@@ -171,19 +201,55 @@ export const Admin = () => {
         precio_mayorista_1: Number(formData.wholesalePrice1),
         precio_mayorista_2: Number(formData.wholesalePrice2 || formData.wholesalePrice1),
         precio_mayorista_3: Number(formData.wholesalePrice3 || formData.wholesalePrice2 || formData.wholesalePrice1),
-        categoria_id: formData.category_id || null,
-        stock_actual: formData.stock === 'disponible' ? 10 : 0,
+        categoria_id: primaryCategoryId,
         activo: true,
         destacado: formData.destacado,
         fotos: finalUrls
       };
 
+      let savedProductId = formData.id;
+
       if (formData.id) {
-        const { error } = await supabase.from('productos').update(productData).eq('id_producto', formData.id);
+        // Al editar, no pisamos stock_actual para respetar el inventario real compartido
+        const { error } = await supabase
+          .from('productos')
+          .update(productData)
+          .eq('id_producto', formData.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('productos').insert([productData]);
+        // Solo al crear un producto nuevo asignamos stock inicial
+        const newProductPayload = {
+          ...productData,
+          stock_actual: formData.stock === 'disponible' ? 10 : 0
+        };
+        const { data: insertedData, error } = await supabase
+          .from('productos')
+          .insert([newProductPayload])
+          .select('id_producto')
+          .single();
         if (error) throw error;
+        savedProductId = insertedData.id_producto;
+      }
+
+      // Sincronizar múltiples categorías en la tabla intermedia producto_categorias
+      if (savedProductId) {
+        const { error: deleteRelError } = await supabase
+          .from('producto_categorias')
+          .delete()
+          .eq('id_producto', savedProductId);
+        if (deleteRelError) throw deleteRelError;
+
+        const relacionesAInsertar = formData.category_ids.map(catId => ({
+          id_producto: savedProductId,
+          categoria_id: Number(catId)
+        }));
+
+        if (relacionesAInsertar.length > 0) {
+          const { error: insertRelError } = await supabase
+            .from('producto_categorias')
+            .insert(relacionesAInsertar);
+          if (insertRelError) throw insertRelError;
+        }
       }
 
       setSuccess(true);
@@ -197,13 +263,12 @@ export const Admin = () => {
 
     } catch (error) {
       console.error(error);
-      alert("Hubo un error al guardar el producto.");
+      alert("Hubo un error al guardar el producto: " + (error.message || ''));
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Guardar categoría / rubro subiendo imagen a Supabase Storage con manejo de errores limpio
   const handleSaveCategory = async (e) => {
     e.preventDefault();
     if (!categoryForm.nombre) return;
@@ -226,22 +291,28 @@ export const Admin = () => {
         finalCategoryImg = data.publicUrl;
       }
 
+      const payload = {
+        nombre: categoryForm.nombre,
+        imagen_url: finalCategoryImg,
+        posicion_imagen: categoryForm.posicion_imagen || 'center'
+      };
+
       if (editingCategory) {
         const { error } = await supabase
           .from('categorias')
-          .update({ nombre: categoryForm.nombre, imagen_url: finalCategoryImg })
+          .update(payload)
           .eq('id', editingCategory.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('categorias')
-          .insert([{ nombre: categoryForm.nombre, imagen_url: finalCategoryImg }]);
+          .insert([payload]);
         if (error) throw error;
       }
 
       setCategoryModalOpen(false);
       setEditingCategory(null);
-      setCategoryForm({ nombre: '', imagen_url: '' });
+      setCategoryForm({ nombre: '', imagen_url: '', posicion_imagen: 'center' });
       setCategoryImagePreview(null);
       setCategoryFileToUpload(null);
       loadCategories();
@@ -337,7 +408,7 @@ export const Admin = () => {
                 <thead className="bg-stockea-green-soft text-stockea-graphite-muted uppercase tracking-widest text-[9px]">
                   <tr>
                     <th className="p-3.5 font-bold rounded-l-lg">Producto</th>
-                    <th className="p-3.5 font-bold">Categoría</th>
+                    <th className="p-3.5 font-bold">Categorías</th>
                     <th className="p-3.5 font-bold">Minorista</th>
                     <th className="p-3.5 font-bold">Mayorista (1/2/3)</th>
                     <th className="p-3.5 font-bold">Estado</th>
@@ -357,7 +428,18 @@ export const Admin = () => {
                           {prod.sku && <span className="text-[10px] font-mono text-stockea-graphite-muted">{prod.sku}</span>}
                         </div>
                       </td>
-                      <td className="p-3.5 text-xs text-stockea-graphite-muted">{prod.category}</td>
+                      <td className="p-3.5 text-xs text-stockea-graphite-muted">
+                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                          {(prod.categories && prod.categories.length > 0 ? prod.categories : [prod.category]).map((catName, idx) => (
+                            <span 
+                              key={idx} 
+                              className="bg-stockea-green-soft text-stockea-green px-2 py-0.5 rounded-pill text-[10px] font-semibold"
+                            >
+                              {catName}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
                       <td className="p-3.5 font-bold text-stockea-graphite">${prod.retailPrice?.toLocaleString('es-AR')}</td>
                       <td className="p-3.5 text-xs">
                         <span className="text-stockea-green font-bold">${prod.wholesalePrice?.toLocaleString('es-AR')}</span> / 
@@ -368,7 +450,7 @@ export const Admin = () => {
                         <span className={`px-2 py-0.5 rounded-pill text-[9px] font-bold uppercase ${
                           prod.stock === 'disponible' ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-stockea-alert'
                         }`}>
-                          {prod.stock}
+                          {prod.stock} ({prod.stockQuantity ?? 0})
                         </span>
                       </td>
                       <td className="p-3.5 text-right">
@@ -417,7 +499,7 @@ export const Admin = () => {
               <button
                 onClick={() => { 
                   setEditingCategory(null); 
-                  setCategoryForm({ nombre: '', imagen_url: '' }); 
+                  setCategoryForm({ nombre: '', imagen_url: '', posicion_imagen: 'center' }); 
                   setCategoryImagePreview(null);
                   setCategoryFileToUpload(null);
                   setCategoryModalOpen(true); 
@@ -433,7 +515,12 @@ export const Admin = () => {
                 <div key={cat.id} className="bg-stockea-bg border border-stockea-border rounded-card overflow-hidden flex flex-col justify-between">
                   <div className="relative h-32 bg-stockea-green-soft">
                     {cat.imagen_url ? (
-                      <img src={cat.imagen_url} alt={cat.nombre} className="w-full h-full object-cover" />
+                      <img 
+                        src={cat.imagen_url} 
+                        alt={cat.nombre} 
+                        className="w-full h-full object-cover" 
+                        style={{ objectPosition: cat.posicion_imagen || 'center' }}
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-stockea-graphite-muted text-xs">Sin imagen</div>
                     )}
@@ -446,7 +533,11 @@ export const Admin = () => {
                     <button
                       onClick={() => { 
                         setEditingCategory(cat); 
-                        setCategoryForm({ nombre: cat.nombre, imagen_url: cat.imagen_url || '' }); 
+                        setCategoryForm({ 
+                          nombre: cat.nombre, 
+                          imagen_url: cat.imagen_url || '',
+                          posicion_imagen: cat.posicion_imagen || 'center'
+                        }); 
                         setCategoryImagePreview(cat.imagen_url || null);
                         setCategoryFileToUpload(null);
                         setCategoryModalOpen(true); 
@@ -479,30 +570,49 @@ export const Admin = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold block mb-1">SKU</label>
-                    <input
-                      type="text"
-                      value={formData.sku}
-                      onChange={e => setFormData({ ...formData, sku: e.target.value })}
-                      placeholder="STK-01"
-                      className="w-full bg-stockea-bg border border-stockea-border rounded-lg px-3 py-2 text-sm outline-none focus:border-stockea-orange"
-                    />
+                <div>
+                  <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold block mb-1">SKU</label>
+                  <input
+                    type="text"
+                    value={formData.sku}
+                    onChange={e => setFormData({ ...formData, sku: e.target.value })}
+                    placeholder="STK-01"
+                    className="w-full bg-stockea-bg border border-stockea-border rounded-lg px-3 py-2 text-sm outline-none focus:border-stockea-orange"
+                  />
+                </div>
+
+                {/* SELECTOR MÚLTIPLE DE RUBROS / CATEGORÍAS */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold">
+                      Rubros / Categorías (Podés elegir más de uno)
+                    </label>
+                    <span className="text-[10px] font-semibold text-stockea-orange">
+                      {formData.category_ids.length} seleccionado(s)
+                    </span>
                   </div>
-                  <div>
-                    <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold block mb-1">Rubro</label>
-                    <select
-                      required
-                      value={formData.category_id}
-                      onChange={e => setFormData({ ...formData, category_id: e.target.value })}
-                      className="w-full bg-stockea-bg border border-stockea-border rounded-lg px-3 py-2 text-sm outline-none focus:border-stockea-orange"
-                    >
-                      <option value="">Seleccionar...</option>
-                      {categoriesList.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.nombre}</option>
-                      ))}
-                    </select>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-stockea-bg border border-stockea-border rounded-lg p-3 max-h-40 overflow-y-auto">
+                    {categoriesList.map(cat => {
+                      const isChecked = formData.category_ids.includes(Number(cat.id));
+                      return (
+                        <label
+                          key={cat.id}
+                          className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-xs cursor-pointer transition-colors ${
+                            isChecked
+                              ? 'bg-stockea-green-soft border-stockea-green text-stockea-green font-bold'
+                              : 'bg-stockea-surface border-stockea-border text-stockea-graphite hover:border-stockea-green/50'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleCategorySelection(cat.id)}
+                            className="accent-stockea-green w-3.5 h-3.5 rounded"
+                          />
+                          <span className="truncate">{cat.nombre}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -529,29 +639,31 @@ export const Admin = () => {
                 </div>
 
                 <div className="flex items-center justify-between pt-2">
-                  <div>
-                    <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold block mb-1">Stock</label>
-                    <div className="flex gap-1 bg-stockea-green-soft rounded-pill p-1">
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, stock: 'disponible' })}
-                        className={`px-3 py-1 text-[10px] font-bold uppercase rounded-pill ${
-                          formData.stock === 'disponible' ? 'bg-stockea-green text-white' : 'text-stockea-graphite-muted'
-                        }`}
-                      >
-                        <Check size={11} className="inline mr-1" /> Disponible
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, stock: 'agotado' })}
-                        className={`px-3 py-1 text-[10px] font-bold uppercase rounded-pill ${
-                          formData.stock === 'agotado' ? 'bg-stockea-alert text-white' : 'text-stockea-graphite-muted'
-                        }`}
-                      >
-                        <X size={11} className="inline mr-1" /> Agotado
-                      </button>
+                  {!formData.id && (
+                    <div>
+                      <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold block mb-1">Stock Inicial</label>
+                      <div className="flex gap-1 bg-stockea-green-soft rounded-pill p-1">
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, stock: 'disponible' })}
+                          className={`px-3 py-1 text-[10px] font-bold uppercase rounded-pill ${
+                            formData.stock === 'disponible' ? 'bg-stockea-green text-white' : 'text-stockea-graphite-muted'
+                          }`}
+                        >
+                          <Check size={11} className="inline mr-1" /> Disponible
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, stock: 'agotado' })}
+                          className={`px-3 py-1 text-[10px] font-bold uppercase rounded-pill ${
+                            formData.stock === 'agotado' ? 'bg-stockea-alert text-white' : 'text-stockea-graphite-muted'
+                          }`}
+                        >
+                          <X size={11} className="inline mr-1" /> Agotado
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <div>
                     <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold block mb-1">Destacado</label>
@@ -664,80 +776,80 @@ export const Admin = () => {
         )}
 
         {/* MODAL EDITAR / CREAR CATEGORÍA CON PREVISUALIZACIÓN Y ENCUADRE */}
-{categoryModalOpen && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-    <div className="bg-stockea-surface border border-stockea-border rounded-card p-6 w-full max-w-md shadow-2xl">
-      <div className="flex justify-between items-center mb-4 border-b border-stockea-border pb-3">
-        <h3 className="font-display font-bold text-base text-stockea-green">
-          {editingCategory ? 'Editar Rubro' : 'Nuevo Rubro'}
-        </h3>
-        <button onClick={() => setCategoryModalOpen(false)} className="text-stockea-graphite-muted hover:text-stockea-green">
-          <X size={18} />
-        </button>
-      </div>
-
-      <form onSubmit={handleSaveCategory} className="space-y-4">
-        <div>
-          <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold block mb-1">Nombre del Rubro</label>
-          <input
-            required
-            type="text"
-            value={categoryForm.nombre}
-            onChange={e => setCategoryForm({ ...categoryForm, nombre: e.target.value })}
-            placeholder="Ej: Camping, Cocina..."
-            className="w-full bg-stockea-bg border border-stockea-border rounded-lg px-3 py-2 text-sm outline-none focus:border-stockea-orange"
-          />
-        </div>
-
-        <div>
-          <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold block mb-1">Imagen Ilustrativa del Rubro</label>
-          <div className="relative border-2 border-dashed border-stockea-border bg-stockea-bg h-32 flex flex-col items-center justify-center rounded-card hover:border-stockea-orange transition-colors overflow-hidden">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleCategoryImageChange}
-              className="absolute inset-0 opacity-0 cursor-pointer z-10"
-            />
-            {categoryImagePreview ? (
-              <img 
-                src={categoryImagePreview} 
-    className="w-full h-full object-cover" 
-    style={{ objectPosition: categoryForm.posicion_imagen || 'center' }}
-    alt="Rubro Preview"
-              />
-            ) : (
-              <div className="text-center text-stockea-graphite-muted">
-                <ImageIcon size={20} className="mx-auto mb-1 opacity-50" />
-                <span className="text-[11px]">Click o arrastrá una imagen</span>
+        {categoryModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <div className="bg-stockea-surface border border-stockea-border rounded-card p-6 w-full max-w-md shadow-2xl">
+              <div className="flex justify-between items-center mb-4 border-b border-stockea-border pb-3">
+                <h3 className="font-display font-bold text-base text-stockea-green">
+                  {editingCategory ? 'Editar Rubro' : 'Nuevo Rubro'}
+                </h3>
+                <button onClick={() => setCategoryModalOpen(false)} className="text-stockea-graphite-muted hover:text-stockea-green">
+                  <X size={18} />
+                </button>
               </div>
-            )}
+
+              <form onSubmit={handleSaveCategory} className="space-y-4">
+                <div>
+                  <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold block mb-1">Nombre del Rubro</label>
+                  <input
+                    required
+                    type="text"
+                    value={categoryForm.nombre}
+                    onChange={e => setCategoryForm({ ...categoryForm, nombre: e.target.value })}
+                    placeholder="Ej: Camping, Cocina..."
+                    className="w-full bg-stockea-bg border border-stockea-border rounded-lg px-3 py-2 text-sm outline-none focus:border-stockea-orange"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold block mb-1">Imagen Ilustrativa del Rubro</label>
+                  <div className="relative border-2 border-dashed border-stockea-border bg-stockea-bg h-32 flex flex-col items-center justify-center rounded-card hover:border-stockea-orange transition-colors overflow-hidden">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleCategoryImageChange}
+                      className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                    />
+                    {categoryImagePreview ? (
+                      <img 
+                        src={categoryImagePreview} 
+                        className="w-full h-full object-cover" 
+                        style={{ objectPosition: categoryForm.posicion_imagen || 'center' }}
+                        alt="Rubro Preview"
+                      />
+                    ) : (
+                      <div className="text-center text-stockea-graphite-muted">
+                        <ImageIcon size={20} className="mx-auto mb-1 opacity-50" />
+                        <span className="text-[11px]">Click o arrastrá una imagen</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Selector de encuadre / posición de la imagen */}
+                <div>
+                  <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold block mb-1">Encuadre de la imagen en la tarjeta</label>
+                  <select
+                    value={categoryForm.posicion_imagen || 'center'}
+                    onChange={e => setCategoryForm({ ...categoryForm, posicion_imagen: e.target.value })}
+                    className="w-full bg-stockea-bg border border-stockea-border rounded-lg px-3 py-2 text-xs outline-none focus:border-stockea-orange"
+                  >
+                    <option value="center">Centrado (Por defecto)</option>
+                    <option value="top">Arriba</option>
+                    <option value="bottom">Abajo</option>
+                  </select>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-stockea-orange hover:bg-stockea-orange-hover text-white font-bold text-xs uppercase tracking-widest py-3 rounded-lg transition-colors"
+                >
+                  Guardar Rubro
+                </button>
+              </form>
+            </div>
           </div>
-        </div>
-
-        {/* Selector de encuadre / posición de la imagen */}
-        <div>
-          <label className="text-[10px] uppercase tracking-widest text-stockea-graphite-muted font-bold block mb-1">Encuadre de la imagen en la tarjeta</label>
-          <select
-            value={categoryForm.posicion_imagen || 'center'}
-            onChange={e => setCategoryForm({ ...categoryForm, posicion_imagen: e.target.value })}
-            className="w-full bg-stockea-bg border border-stockea-border rounded-lg px-3 py-2 text-xs outline-none focus:border-stockea-orange"
-          >
-            <option value="center">Centrado (Por defecto)</option>
-            <option value="top">Arriba</option>
-            <option value="bottom">Abajo</option>
-          </select>
-        </div>
-
-        <button
-          type="submit"
-          className="w-full bg-stockea-orange hover:bg-stockea-orange-hover text-white font-bold text-xs uppercase tracking-widest py-3 rounded-lg transition-colors"
-        >
-          Guardar Rubro
-        </button>
-      </form>
-    </div>
-  </div>
-)}
+        )}
 
       </div>
     </div>

@@ -27,7 +27,11 @@ export const useProducts = () => {
           stock_minimo,
           activo,
           destacado,
-          categorias ( id, nombre )
+          categoria_id,
+          categorias!productos_categoria_id_fkey ( id, nombre ),
+          producto_categorias (
+            categorias ( id, nombre )
+          )
         `)
         .eq('activo', true)
         .order('id_producto', { ascending: false });
@@ -44,12 +48,33 @@ export const useProducts = () => {
         const wholesale2 = Number(p.precio_mayorista_2 || 0) || wholesale1;
         const wholesale3 = Number(p.precio_mayorista_3 || 0) || wholesale2;
 
+        // Unifica la categoría principal con las categorías secundarias sin duplicados
+        const categoriaPrincipal = p.categorias?.nombre;
+        const categoriasExtra = (p.producto_categorias || [])
+          .map(pc => pc.categorias?.nombre)
+          .filter(Boolean);
+
+        const todasLasCategorias = Array.from(
+          new Set([categoriaPrincipal, ...categoriasExtra].filter(Boolean))
+        );
+
+        const nombreCategoria = todasLasCategorias[0] || 'General';
+
+        // También guardamos los IDs de todas las categorías asociadas para facilitar la edición en Admin
+        const categoriaIdsExtra = (p.producto_categorias || [])
+          .map(pc => pc.categorias?.id)
+          .filter(Boolean);
+
+        const todosLosIds = Array.from(
+          new Set([p.categoria_id, ...categoriaIdsExtra].filter(Boolean))
+        );
+
         return {
           id: p.id_producto,
           sku: p.sku,
           title: p.nombre,
           description: p.descripcion || '',
-          characteristics: p.caracteristicas || '', // <--- ¡Mapeo correcto agregado aquí!
+          characteristics: p.caracteristicas || '',
           retailPrice,
           wholesalePrice: wholesale1,
           wholesalePriceTier2: wholesale2,
@@ -59,8 +84,10 @@ export const useProducts = () => {
           minTier3Qty: 12,
           stock: p.stock_actual > 0 ? (p.stock_actual <= (p.stock_minimo || 2) ? 'low' : 'disponible') : 'agotado',
           stockQuantity: p.stock_actual,
-          category: p.categorias?.nombre || 'General',
-          categoryId: p.categorias?.id || null,
+          categories: todasLasCategorias.length > 0 ? todasLasCategorias : ['General'],
+          category: nombreCategoria,
+          categoryId: p.categoria_id,
+          categoryIds: todosLosIds,
           image: fotoPrincipal,
           images: Array.isArray(p.fotos) ? p.fotos : [fotoPrincipal],
           isFeatured: Boolean(p.destacado)
